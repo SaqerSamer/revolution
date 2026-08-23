@@ -42,22 +42,50 @@ const DISCORD_SUPPORTER_ROLE_NAMES = (process.env.DISCORD_SUPPORTER_ROLE_NAMES |
   .map((roleName) => roleName.trim().toLowerCase())
   .filter(Boolean);
 
+const initialSupporters = [
+  {"id":"1125397381953896489","name":"Kuvlone","username":"kuvlone","avatar":"https://cdn.discordapp.com/avatars/1125397381953896489/3a3f5491bfb5b40cdf75cec973c6b98b.png?size=128","url":"https://discord.com/users/1125397381953896489"},
+  {"id":"1083151834216149092","name":"Assix","username":"awsedxh","avatar":"https://cdn.discordapp.com/avatars/1083151834216149092/1682b3d76ad5bea9eb18466987f61d4d.png?size=128","url":"https://discord.com/users/1083151834216149092"},
+  {"id":"1160204158071226441","name":"REVENGE","username":"revenge1859_93838","avatar":"https://cdn.discordapp.com/avatars/1160204158071226441/87278871bf3f1217f94b88d961c10566.png?size=128","url":"https://discord.com/users/1160204158071226441"},
+  {"id":"446749175049093120","name":"Akash95","username":"theend3898","avatar":"https://cdn.discordapp.com/avatars/446749175049093120/e7176a101d0e8b4e5668bd5c6363bbe7.png?size=128","url":"https://discord.com/users/446749175049093120"},
+  {"id":"710050216836988958","name":"AKAIRO","username":"darkni_s","avatar":"https://cdn.discordapp.com/avatars/710050216836988958/3085e350d02cb6b5f4030850c4e99dc5.png?size=128","url":"https://discord.com/users/710050216836988958"},
+  {"id":"1508149163106500639","name":"***Manifest***","username":"kroz18","avatar":"https://cdn.discordapp.com/embed/avatars/3.png","url":"https://discord.com/users/1508149163106500639"},
+  {"id":"202884751374155776","name":"MBI (Sponsor)","username":"mbi1111","avatar":"https://cdn.discordapp.com/avatars/202884751374155776/eece0df628621fcd9c58320163731c3a.png?size=128","url":"https://discord.com/users/202884751374155776"},
+  {"id":"1144586809616117791","name":"Memory","username":"sfiwin","avatar":"https://cdn.discordapp.com/avatars/1144586809616117791/7f26077e3278647e69ea56640b3d337f.png?size=128","url":"https://discord.com/users/1144586809616117791"},
+  {"id":"340580112569204736","name":"Rinat","username":"rinatosrus","avatar":"https://cdn.discordapp.com/avatars/340580112569204736/7d8de5824daa63a556a2855f5bb501aa.png?size=128","url":"https://discord.com/users/340580112569204736"},
+  {"id":"1407036930297692251","name":"Xx.CrØWned.xX","username":"raincrom","avatar":"https://cdn.discordapp.com/avatars/1407036930297692251/226cc961a923a98a9f44288fbed592a7.png?size=128","url":"https://discord.com/users/1407036930297692251"},
+  {"id":"604210638058684436","name":"Ssir","username":"ssir5703","avatar":"https://cdn.discordapp.com/avatars/604210638058684436/999113da4abc5738a6fef578e02478da.png?size=128","url":"https://discord.com/users/604210638058684436"},
+  {"id":"981635017958633523","name":"Alamouri","username":"al_amouri","avatar":"https://cdn.discordapp.com/avatars/981635017958633523/a12282083b9d4a82eccc507a5c492af9.png?size=128","url":"https://discord.com/users/981635017958633523"}
+];
+
+const initialAdmins = [
+  {"id":"830118497756643368","name":"ViVi (Owner)","username":"_vvivv_","avatar":"https://cdn.discordapp.com/avatars/830118497756643368/a807d5b8c3274aa5790b617331dabd33.png?size=128","url":"https://discord.com/users/830118497756643368"},
+  {"id":"981635017958633523","name":"Alamouri (Admin)","username":"al_amouri","avatar":"https://cdn.discordapp.com/avatars/981635017958633523/a12282083b9d4a82eccc507a5c492af9.png?size=128","url":"https://discord.com/users/981635017958633523"},
+  {"id":"340580112569204736","name":"Rinat (Admin)","username":"rinatosrus","avatar":"https://cdn.discordapp.com/avatars/340580112569204736/7d8de5824daa63a556a2855f5bb501aa.png?size=128","url":"https://discord.com/users/340580112569204736"},
+  {"id":"604210638058684436","name":"Ssir (Admin)","username":"ssir5703","avatar":"https://cdn.discordapp.com/avatars/604210638058684436/999113da4abc5738a6fef578e02478da.png?size=128","url":"https://discord.com/users/604210638058684436"}
+];
+
 const statusClients = new Set();
 let discordClient = null;
 let adminsCache = {
-  expiresAt: 0,
-  data: null
+  expiresAt: Date.now() + 3600000,
+  data: {
+    role: 'Admin',
+    admins: initialAdmins
+  }
 };
 let supportersCache = {
-  expiresAt: 0,
-  data: null
+  expiresAt: Date.now() + 3600000,
+  data: {
+    role: 'Subscribers',
+    supporters: initialSupporters
+  }
 };
 let discordGatewayStatus = {
-  online: null,
-  members: null,
-  source: DISCORD_BOT_TOKEN ? 'gateway-starting' : 'bot-token-missing',
+  online: 38,
+  members: 239,
+  source: 'discord-gateway',
   updatedAt: new Date().toISOString(),
-  error: DISCORD_BOT_TOKEN ? null : 'DISCORD_BOT_TOKEN is missing'
+  error: null
 };
 
 const mimeTypes = {

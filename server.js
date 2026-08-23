@@ -496,14 +496,56 @@ async function discordApi(pathname) {
 
 async function getDiscordAdmins() {
   const now = Date.now();
-  if (adminsCache.data && adminsCache.expiresAt > now) {
+  if (adminsCache.data && adminsCache.expiresAt > now && adminsCache.data.admins?.length) {
     return adminsCache.data;
+  }
+
+  // 1. Try discordClient (Gateway) first - avoids REST 429
+  if (discordClient && discordClient.isReady()) {
+    try {
+      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+      if (guild) {
+        const roles = await guild.roles.fetch().catch(() => guild.roles.cache);
+        const adminRole = roles.find((role) => role.id === DISCORD_ADMIN_ROLE_ID)
+          || roles.find((role) => DISCORD_ADMIN_ROLE_NAMES.some((roleName) => String(role.name || '').toLowerCase().includes(roleName)));
+
+        if (adminRole) {
+          const members = await guild.members.fetch({ time: 10000 }).catch(() => guild.members.cache);
+          const admins = members
+            .filter((member) => member.roles.cache.has(adminRole.id))
+            .map((member) => {
+              const user = member.user || {};
+              return {
+                id: user.id,
+                name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Admin', 80),
+                username: cleanDiscordText(user.username || 'admin', 80),
+                avatar: discordAvatarUrl(member),
+                url: `https://discord.com/users/${user.id}`
+              };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          adminsCache = {
+            expiresAt: now + 300000,
+            data: {
+              role: adminRole.name,
+              admins
+            }
+          };
+
+          return adminsCache.data;
+        }
+      }
+    } catch (err) {
+      console.warn('Gateway admin fetch error:', err.message);
+    }
   }
 
   if (!DISCORD_BOT_TOKEN) {
     return { admins: [], note: 'Discord bot token is missing' };
   }
 
+  // 2. REST Fallback
   try {
     const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
     const adminRole = roles.find((role) => role.id === DISCORD_ADMIN_ROLE_ID)
@@ -532,7 +574,7 @@ async function getDiscordAdmins() {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     adminsCache = {
-      expiresAt: now + 180000,
+      expiresAt: now + 300000,
       data: {
         role: adminRole.name,
         admins
@@ -550,14 +592,59 @@ async function getDiscordAdmins() {
 
 async function getDiscordSupporters() {
   const now = Date.now();
-  if (supportersCache.data && supportersCache.expiresAt > now) {
+  if (supportersCache.data && supportersCache.expiresAt > now && supportersCache.data.supporters?.length) {
     return supportersCache.data;
+  }
+
+  // 1. Try discordClient (Gateway) first - avoids REST 429
+  if (discordClient && discordClient.isReady()) {
+    try {
+      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+      if (guild) {
+        const roles = await guild.roles.fetch().catch(() => guild.roles.cache);
+        const supporterRole = roles.find((role) => role.id === DISCORD_SUPPORTER_ROLE_ID)
+          || roles.find((role) => {
+            const roleName = String(role.name || '').toLowerCase();
+            return DISCORD_SUPPORTER_ROLE_NAMES.some((name) => roleName.includes(name));
+          });
+
+        if (supporterRole) {
+          const members = await guild.members.fetch({ time: 10000 }).catch(() => guild.members.cache);
+          const supporters = members
+            .filter((member) => member.roles.cache.has(supporterRole.id))
+            .map((member) => {
+              const user = member.user || {};
+              return {
+                id: user.id,
+                name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Supporter', 80),
+                username: cleanDiscordText(user.username || 'supporter', 80),
+                avatar: discordAvatarUrl(member),
+                url: `https://discord.com/users/${user.id}`
+              };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          supportersCache = {
+            expiresAt: now + 300000,
+            data: {
+              role: supporterRole.name,
+              supporters
+            }
+          };
+
+          return supportersCache.data;
+        }
+      }
+    } catch (err) {
+      console.warn('Gateway supporter fetch error:', err.message);
+    }
   }
 
   if (!DISCORD_BOT_TOKEN) {
     return { role: null, supporters: [], note: 'Discord bot token is missing' };
   }
 
+  // 2. REST Fallback
   try {
     const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
     const supporterRole = roles.find((role) => role.id === DISCORD_SUPPORTER_ROLE_ID)
@@ -590,7 +677,7 @@ async function getDiscordSupporters() {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     supportersCache = {
-      expiresAt: now + 180000,
+      expiresAt: now + 300000,
       data: {
         role: supporterRole.name,
         supporters

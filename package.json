@@ -1,0 +1,16 @@
+{
+  "name": "raidzone-purgatory-website-english",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static RAIDZONE PURGATORY website served with Node.js.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

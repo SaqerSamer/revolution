@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>REVOLUTION | Once Human Community</title>
+  <meta name="description" content="REVOLUTION — a custom Once Human community server hub for raids, events, rules, squads, and Discord." />
+  <meta name="theme-color" content="#070709" />
+  <meta property="og:title" content="REVOLUTION" />
+  <meta property="og:description" content="Custom Once Human community server — raids, events, squads, and high-stakes survival." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/favicon.png" type="image/png" />
+  <link rel="preload" href="assets/logo-transparent.png" as="image" />
+  <link rel="preload" href="assets/once-human-backdrop.jpg" as="image" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-game" aria-hidden="true"></div>
+  <canvas id="electricCanvas" class="bg-electric" aria-hidden="true"></canvas>
+  <div class="bg-noise" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-a" aria-hidden="true"></div>
+  <div class="orb orb-b" aria-hidden="true"></div>
+
+  <header class="site-header" id="siteHeader">
+    <a class="brand" href="#top" aria-label="REVOLUTION home">
+      <img src="assets/logo-transparent.png" alt="REVOLUTION logo" />
+      <span>
+        <strong>REVOLUTION</strong>
+        <small>COMMUNITY</small>
+      </span>
+    </a>
+
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open menu" aria-controls="mainNav" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="nav" id="mainNav" aria-label="Main navigation">
+      <a href="#about">About</a>
+      <a href="#download">Download</a>
+      <a href="#events">Events</a>
+      <a href="#support">Support &amp; Feedback</a>
+      <a href="#rules">Rules</a>
+      <a href="#wipe">Wipe</a>
+      <a class="nav-cta" href="https://discord.gg/revolutionraidzone" target="_blank" rel="noreferrer">Discord</a>
+    </nav>
+  </header>
+
+  <div id="audioDock" class="audio-dock" aria-label="Background music controls">
+    <audio id="bgMusic" src="assets/revolution-music.mp3" preload="auto" autoplay playsinline loop></audio>
+    <div class="volume-panel">
+      <input id="musicVolume" class="music-volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Music volume" />
+    </div>
+    <button id="musicToggle" class="music-toggle" type="button" aria-label="Play background music" title="Play / pause music">
+      <span aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div id="audioGate" class="audio-gate" hidden>
+    <div class="audio-gate-card">
+      <img src="assets/logo-transparent.png" alt="" />
+      <strong>Welcome to REVOLUTION</strong>
+      <span>Click anywhere to enter</span>
+    </div>
+    <div class="language-picker" role="group" aria-label="Language selector">
+      <button type="button" data-lang-choice="en" aria-pressed="true">English</button>
+      <button type="button" data-lang-choice="ar" aria-pressed="false">العربية</button>
+      <button type="button" data-lang-choice="ru" aria-pressed="false">Русский</button>
+    </div>
+  </div>
+
+  <main id="top">
+    <section class="hero section-pad">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Custom Once Human Community</p>
+        <h1>
+          <span>ONCE HUMAN</span>
+          <em>REVOLUTION</em>
+        </h1>
+        <p class="lead">
+          A custom Once Human server built for serious players: raids, squads, events,
+          challenges, clean rules, and a dark tactical atmosphere made for people who want action.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn primary" href="https://discord.gg/revolutionraidzone" target="_blank" rel="noreferrer">Join Discord</a>
+          <a class="btn ghost" href="#rules">Read Rules</a>
+        </div>
+
+        <div class="server-card" aria-label="Server quick info">
+          <div>
+            <small>Server Status</small>
+            <strong class="server-status">
+              <span class="pulse"></span>
+              <span>ACTIVE</span>
+              <span class="status-separator">/</span>
+              <span id="discordOnline" class="discord-online" aria-live="polite">checking online</span>
+            </strong>
+          </div>
+          <div>
+            <small>Mode</small>
+            <strong>PVP/Stander</strong>
+          </div>
+          <div>
+            <small>Code / IP</small>
+            <button id="copyCode" type="button" data-code="12101811039">12101811039</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-logo-wrap">
+        <img class="hero-logo" src="assets/logo-transparent.png" alt="REVOLUTION emblem" />
+      </div>
+    </section>
+
+    <p class="ticker-title"><span>&#9733;</span> SUBSCRIBERS <span>&#9733;</span></p>
+    <section class="ticker" aria-label="Revolution supporters">
+      <div id="supporterTicker" class="ticker-track">
+        <span>&#9889; Weekly raids</span>
+        <span>&#9670; Custom events</span>
+        <span>&#9763; Squad battles</span>
+        <span>&#9671; Fair rules</span>
+        <span>&#10022; Discord drops</span>
+        <span>&#9889; Weekly raids</span>
+        <span>&#9670; Custom events</span>
+      </div>
+    </section>
+
+    <section class="section-pad about" id="about">
+      <div class="about-copy">
+        <p class="eyebrow"><span></span> About</p>
+        <h2>Welcome to REVOLUTION.</h2>
+        <p class="about-kicker">The ultimate Once Human experience.</p>
+        <p>
+          REVOLUTION offers a rebalanced ecosystem built for players who love a real
+          challenge, fair competition, and high-stakes PvP. Our mission is simple: bring back
+          the true spirit of survival.
+        </p>
+        <p>
+          High-tier gear and rare resources are hard to obtain, meaning every piece of loot
+          you find or craft feels earned, and every upgrade matters. With balanced loot
+          progression, skill, strategy, and teamwork dictate the outcome of battles.
+        </p>
+        <p class="about-callout">
+          Are you ready to earn your survival? Join REVOLUTION today and show everyone
+          what you're truly made of.
+        </p>
+      </div>
+
+      <div class="about-points" aria-label="Revolution highlights">
+        <article class="about-card">
+          <b>01</b>
+          <h3>Earned Progression</h3>
+          <p>Rare loot and high-tier gear matter because every upgrade takes effort.</p>
+        </article>
+        <article class="about-card">
+          <b>02</b>
+          <h3>Fair Competition</h3>
+          <p>Balanced progression keeps fights focused on skill, strategy, and teamwork.</p>
+        </article>
+        <article class="about-card">
+          <b>03</b>
+          <h3>High-Stakes PvP</h3>
+          <p>Every tactical decision counts in intense encounters and epic rivalries.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-pad download-game" id="download">
+      <div class="section-title">
+        <p class="eyebrow"><span></span> Download Game</p>
+        <h2>Start Once Human from your platform.</h2>
+        <p>Pick the launcher you use and jump into REVOLUTION when the game is ready.</p>
+      </div>
+
+      <div class="download-grid">
+        <a class="download-card steam" href="https://store.steampowered.com/app/2139460/Once_Human/" target="_blank" rel="noreferrer">
+          <span class="platform-mark"><img src="assets/steam-logo.png" alt="" /></span>
+          <b>Steam</b>
+          <strong>Download on Steam</strong>
+          <small>Once Human official Steam page</small>
+        </a>
+
+        <a class="download-card epic" href="https://store.epicgames.com/p/once-human-b5c576" target="_blank" rel="noreferrer">
+          <span class="platform-mark"><img src="assets/epic-games-logo.png" alt="" /></span>
+          <b>Epic Games</b>
+          <strong>Get it on Epic Games</strong>
+          <small>Once Human on Epic Games Store</small>
+        </a>
+
+        <a class="download-card android" href="https://play.google.com/store/apps/details?id=com.h73.jhqyna&pcampaignid=web_share" target="_blank" rel="noreferrer">
+          <span class="platform-mark"><img src="assets/google-play-logo.png" alt="" /></span>
+          <b>Android</b>
+          <strong>Download for Phone</strong>
+          <small>Once Human on Google Play</small>
+        </a>
+      </div>
+    </section>
+
+    <section class="section-pad season-events" id="events">
+      <div class="section-title">
+        <p class="eyebrow"><span></span> Events</p>
+        <h2>Season Events</h2>
+        <p>Season events with image, details, in-game location, and smart time conversion from Moscow time.</p>
+      </div>
+
+      <div id="eventSlider" class="event-slider" aria-live="polite">
+        <article class="event-slide empty-event">
+          <div class="event-slide-body">
+            <b>Season Event</b>
+            <h3>No events posted yet.</h3>
+            <p>Admins can add event slides from the hidden control page.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-pad panel-row" id="wipe">
+      <div class="terminal-panel">
+        <div class="terminal-top"><span></span><span></span><span></span></div>
+        <p class="command">/wipe_revolution --status</p>
+        <ol>
+          <li><strong>Wipe Announcements</strong><br />All wipe dates, reset details, and updates will be posted in Discord.</li>
+          <li><strong>Fresh Progression</strong><br />The server wipe keeps PvP, loot, and team progression fair for every player.</li>
+          <li><strong>Prepare Early</strong><br />Check the schedule, gather your squad, and be ready for the next fresh start.</li>
+        </ol>
+      </div>
+
+      <aside class="event-panel">
+        <p class="eyebrow"><span></span> Wipe</p>
+        <h2>Next Wipe</h2>
+        <p id="wipeNote">The exact wipe time will be announced on Discord before the reset. Keep an eye on updates so your squad is ready.</p>
+        <div class="count-grid">
+          <div><strong id="wipeStart">TBA</strong><small>Start</small></div>
+          <div><strong id="wipeEnd">TBA</strong><small>End</small></div>
+          <div><strong id="wipeCountdown">TBA</strong><small>Countdown</small></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section-pad support-feedback" id="support">
+      <div class="section-title">
+        <p class="eyebrow"><span></span> Support &amp; Feedback</p>
+        <h2>Need help or want to send feedback?</h2>
+        <p>Open a ticket-style support channel or send feedback straight to the REVOLUTION team.</p>
+      </div>
+
+      <div class="support-feedback-grid">
+        <article class="support-card">
+          <b>Support</b>
+          <h3>Talk to staff</h3>
+          <p>Use this channel for server help, player reports, issues, and questions that need staff attention.</p>
+          <a class="btn primary" href="https://discord.com/channels/1506948630903521290/1506948631226355776" target="_blank" rel="noreferrer">Open Support</a>
+          <div class="admin-roster" aria-label="Server admins">
+            <strong>Admins</strong>
+            <div id="adminList" class="admin-list">
+              <span class="admin-loading">Loading admins...</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="feedback-card" id="feedback">
+          <b>Feedback</b>
+          <h3>Send website feedback</h3>
+          <form id="feedbackForm" class="feedback-form">
+            <label>
+              Name
+              <input id="feedbackName" name="name" type="text" maxlength="80" placeholder="Your name" autocomplete="name" />
+            </label>
+            <label>
+              Message
+              <textarea id="feedbackMessage" name="message" maxlength="1000" required placeholder="Write your feedback here"></textarea>
+            </label>
+            <div class="feedback-actions">
+              <button class="btn primary" type="submit">Send Feedback</button>
+              <a class="btn ghost" href="https://discord.com/channels/1506948630903521290/1506948631360442411" target="_blank" rel="noreferrer">Open Channel</a>
+            </div>
+            <p id="feedbackStatus" class="feedback-status" aria-live="polite"></p>
+          </form>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-pad rules" id="rules">
+      <div class="section-title">
+        <p class="eyebrow"><span></span> Rules</p>
+        <h2>REVOLUTION server rules.</h2>
+      </div>
+
+      <div class="rule-grid">
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>01</span>
+            <h3>Teaming And Alliance Rules</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>1.1</strong><span>Teaming is strictly prohibited. Teaming means actively choosing not to engage or kill an enemy player from a different Hive when you have a clear opportunity to do so.</span></li>
+            <li><strong>1.2</strong><span>No temporary alliances in combat. Forming temporary alliances during active fights, including teaming up mid-combat against a player you dislike, is not allowed.</span></li>
+            <li><strong>1.3</strong><span>No team swapping for advantages. Leaving and rejoining teams to gain an advantage is not permitted.</span></li>
+            <li><strong>1.4</strong><span>No exceeding team limits. Teaming beyond the allowed player limit is strictly forbidden.</span></li>
+            <li><strong>1.5</strong><span>No switching partners for advantages. Switching partners to gain an advantage is prohibited.</span></li>
+          </ul>
+          <p class="rule-note">You are allowed to switch teams one time per wipe for any reason. If you need to switch again, you must notify the admins.</p>
+          <div class="penalty-box">
+            <b>Rule violation penalties</b>
+            <p>1st offense: Warning.</p>
+            <p>2nd offense: 6-hour ban.</p>
+            <p>3rd offense: 6-hour ban + character progress reset.</p>
+          </div>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>02</span>
+            <h3>Trading</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>2.1</strong><span>Opposing parties may transfer goods between players outside their Hive only if it happens in safe areas through the trading system.</span></li>
+            <li><strong>2.2</strong><span>Personal vending machines are allowed, but server staff are not responsible for lost goods if the vending machine is raided.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>03</span>
+            <h3>Chat And Community Behavior</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>3.1</strong><span>The game can become toxic sometimes, but everyone is expected to keep a respectful attitude.</span></li>
+            <li><strong>3.2</strong><span>No harassment in game chat or Discord. Proof may be required.</span></li>
+            <li><strong>3.3</strong><span>Spreading false information about REVOLUTION is not allowed.</span></li>
+            <li><strong>3.4</strong><span>Promoting or discussing other servers is not allowed.</span></li>
+          </ul>
+          <div class="penalty-box">
+            <b>Rule violation penalties</b>
+            <p>Depending on the gravity of the situation: server mute for a period of time, warning, temporary or permanent Discord server ban, or temporary or permanent game server ban.</p>
+          </div>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>04</span>
+            <h3>Bugs</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>4.1</strong><span>Using any type of bug is strictly forbidden. It will result in a permanent ban + character deletion.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>05</span>
+            <h3>Building &bull; Bugs &bull; Cheating</h3>
+          </div>
+          <p class="rule-note">Once Human REVOLUTION is still being improved. Please report bugs so we can make the server better together.</p>
+          <ul class="rules-list">
+            <li><strong>Build</strong><span>Do not glitch foundations into terrain, textures, or terminals. Using terrain or elevation exploits for unfair defense is strictly prohibited.</span></li>
+            <li><strong>Bases</strong><span>No glitched or buggy bases. Stacked foundations, clipping structures into map textures, or hiding the territory terminal inside foundations is strictly forbidden.</span></li>
+            <li><strong>Limits</strong><span>No territory or limit exploits. Merging territories to bypass building or turret limits is considered bug abuse.</span></li>
+          </ul>
+          <div class="penalty-box">
+            <b>Rule violation penalties</b>
+            <p>Wipe progression deleted.</p>
+            <p>6-hour ban.</p>
+          </div>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>06</span>
+            <h3>Building Areas</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>5.1</strong><span>Building outside permitted areas is not allowed.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>07</span>
+            <h3>Daily Kit And Weekly Kit</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>6.1</strong><span>The REVOLUTION custom server shopping system uses Starchrom to purchase specialized progression kits.</span></li>
+            <li><strong>Kits</strong><span>Available kits can be purchased from the game shop.</span></li>
+            <li><strong>Currency</strong><span>Admin staff will frequently send Starchrom directly to players.</span></li>
+            <li><strong>Delivery</strong><span>Check your in-game mailbox and claim your Starchrom.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>08</span>
+            <h3>Player Names</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>7.1</strong><span>Unreadable or strange names are not allowed, including names using Chinese or Japanese characters.</span></li>
+            <li><strong>7.2</strong><span>Impersonating yourself as a cheater or admin will result in a permanent ban + character deletion.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>09</span>
+            <h3>Meteor Car</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>8.1</strong><span>The METEOR CAR cannot be used for raids.</span></li>
+          </ul>
+        </article>
+
+        <article class="rule-category">
+          <div class="rule-heading">
+            <span>10</span>
+            <h3>Staff Rules</h3>
+          </div>
+          <ul class="rules-list">
+            <li><strong>9.1</strong><span>Staff members must always remain fair and neutral.</span></li>
+            <li><strong>9.2</strong><span>No interference. Staff must not interfere in player fights.</span></li>
+            <li><strong>9.3</strong><span>Base locations. Staff must never reveal or hint at player base locations.</span></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="cta section-pad">
+      <div>
+        <p class="eyebrow"><span></span> Ready?</p>
+        <h2>Enter the fire. Respect the system.</h2>
+        <p>Join our active community, gather your squad, and conquer Once Human REVOLUTION.</p>
+      </div>
+      <a class="btn primary big" href="https://discord.gg/revolutionraidzone" target="_blank" rel="noreferrer">Join REVOLUTION</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>REVOLUTION &mdash; Server is kept alive by VIVI - Website is powered by Alamouri &copy; 26ECU - 2026. All rights and wrongs reserved.</p>
+  </footer>
+
+  <script src="assets/i18n.js"></script>
+  <script>
+    window.raidzoneI18n?.init();
+    const i18n = window.raidzoneI18n;
+    const t = (key) => i18n?.t(key) || key;
+
+    const copyButton = document.getElementById('copyCode');
+    copyButton?.addEventListener('click', async () => {
+      const code = copyButton.dataset.code || copyButton.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(code);
+        const original = copyButton.textContent;
+        copyButton.textContent = t('COPIED');
+        setTimeout(() => copyButton.textContent = original, 1200);
+      } catch (error) {
+        copyButton.textContent = t('COPY FAILED');
+        setTimeout(() => copyButton.textContent = code, 1200);
+      }
+    });
+
+    const publicStatusOrigin = 'https://missed-would-centres-exposure.trycloudflare.com';
+
+    function statusUrl(path) {
+      return window.location.protocol === 'file:' ? `${publicStatusOrigin}${path}` : path;
+    }
+
+    const siteHeader = document.getElementById('siteHeader');
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mainNav = document.getElementById('mainNav');
+    const mobileMenuQuery = window.matchMedia('(max-width: 720px)');
+
+    function setMobileMenu(open) {
+      if (!siteHeader || !mobileMenuToggle) return;
+
+      siteHeader.classList.toggle('is-menu-open', open);
+      mobileMenuToggle.setAttribute('aria-expanded', String(open));
+      mobileMenuToggle.setAttribute('aria-label', open ? t('Close menu') : t('Open menu'));
+    }
+
+    mobileMenuToggle?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setMobileMenu(!siteHeader?.classList.contains('is-menu-open'));
+    });
+
+    mainNav?.addEventListener('click', (event) => {
+      if (event.target.closest('a')) {
+        setMobileMenu(false);
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!mobileMenuQuery.matches || !siteHeader?.classList.contains('is-menu-open')) return;
+      if (siteHeader.contains(event.target)) return;
+      setMobileMenu(false);
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        setMobileMenu(false);
+      }
+    });
+
+    mobileMenuQuery.addEventListener?.('change', (event) => {
+      if (!event.matches) {
+        setMobileMenu(false);
+      }
+    });
+
+    const feedbackForm = document.getElementById('feedbackForm');
+    const feedbackStatus = document.getElementById('feedbackStatus');
+    const adminList = document.getElementById('adminList');
+    const supporterTicker = document.getElementById('supporterTicker');
+    const wipeStart = document.getElementById('wipeStart');
+    const wipeEnd = document.getElementById('wipeEnd');
+    const wipeCountdown = document.getElementById('wipeCountdown');
+    const wipeNote = document.getElementById('wipeNote');
+    const eventSlider = document.getElementById('eventSlider');
+    let currentSiteData = null;
+    let wipeCountdownTimer = null;
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[character]));
+    }
+
+    function renderAdmins(admins) {
+      if (!adminList) return;
+
+      if (!admins.length) {
+        adminList.innerHTML = `<span class="admin-loading">${escapeHtml(t('No admins found in the Admin role.'))}</span>`;
+        return;
+      }
+
+      adminList.innerHTML = admins.map((admin) => `
+        <a class="admin-profile" href="${escapeHtml(admin.url)}" target="_blank" rel="noreferrer">
+          <img src="${escapeHtml(admin.avatar)}" alt="" loading="lazy" />
+          <span>${escapeHtml(admin.name)}</span>
+        </a>
+      `).join('');
+    }
+
+    async function loadAdmins() {
+      if (!adminList) return;
+
+      try {
+        const response = await fetch(statusUrl('/api/admins'), { cache: 'no-store' });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Could not load admins');
+        }
+
+        renderAdmins(data.admins || []);
+      } catch (error) {
+        adminList.innerHTML = `<span class="admin-loading">${escapeHtml(t('Enable Server Members Intent to show admins.'))}</span>`;
+      }
+    }
+
+    function renderSupporters(supporters) {
+      if (!supporterTicker) return;
+
+      const safeSupporters = Array.isArray(supporters) ? supporters : [];
+      const isMobileLayout = mobileMenuQuery.matches;
+      if (!safeSupporters.length) {
+        const fallback = [
+          `<span class="supporter-pill supporter-loading">${escapeHtml(t('Gold supporters coming soon'))}</span>`,
+          '<span class="supporter-pill supporter-loading">REVOLUTION</span>',
+          `<span class="supporter-pill supporter-loading">${escapeHtml(t('Support the server'))}</span>`
+        ].join('');
+        supporterTicker.innerHTML = `<div class="ticker-group">${fallback}</div><div class="ticker-group" aria-hidden="true">${fallback}</div>`;
+        syncSupporterTickerSpeed();
+        return;
+      }
+
+      const displaySupporters = isMobileLayout ? safeSupporters.slice(0, 12) : safeSupporters;
+      const repeated = [];
+      const minimumItems = isMobileLayout ? 8 : 32;
+      const repeatFactor = isMobileLayout ? 1 : 16;
+      while (repeated.length < Math.max(minimumItems, displaySupporters.length * repeatFactor)) {
+        repeated.push(...displaySupporters);
+      }
+
+      const group = repeated.map((supporter) => `
+        <a class="supporter-pill has-avatar" href="${escapeHtml(supporter.url)}" target="_blank" rel="noreferrer">
+          <img src="${escapeHtml(supporter.avatar)}" alt="" loading="lazy" />
+          <span>${escapeHtml(supporter.name)}</span>
+        </a>
+        <span class="supporter-star" aria-hidden="true">&#9733;</span>
+      `).join('');
+
+      supporterTicker.innerHTML = `<div class="ticker-group">${group}</div><div class="ticker-group" aria-hidden="true">${group}</div>`;
+      syncSupporterTickerSpeed();
+    }
+
+    function syncSupporterTickerSpeed() {
+      if (!supporterTicker) return;
+
+      requestAnimationFrame(() => {
+        const firstGroup = supporterTicker.querySelector('.ticker-group');
+        const groupWidth = firstGroup?.scrollWidth || 0;
+        const seconds = mobileMenuQuery.matches
+          ? Math.max(18, Math.round(groupWidth / 28))
+          : Math.max(22, Math.round(groupWidth / 44));
+        supporterTicker.style.animationDuration = `${seconds}s`;
+      });
+    }
+
+    async function loadSupporters() {
+      if (!supporterTicker) return;
+
+      try {
+        const response = await fetch(statusUrl('/api/supporters'), { cache: 'no-store' });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Could not load supporters');
+        }
+
+        renderSupporters(data.supporters || []);
+      } catch (error) {
+        renderSupporters([]);
+      }
+    }
+
+    function formatDateTime(value, timeZone) {
+      const date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return t('TBA');
+
+      return new Intl.DateTimeFormat(i18n?.getLocale() || 'en-GB', {
+        timeZone,
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+    }
+
+    function formatCountdown(targetDate) {
+      const diff = targetDate.getTime() - Date.now();
+      if (Number.isNaN(targetDate.getTime())) return t('TBA');
+      if (diff <= 0) return t('Live');
+
+      const totalHours = Math.floor(diff / 3600000);
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+      const minutes = Math.floor((diff % 3600000) / 60000);
+
+      if (days > 0) return `${days} ${t('d')} ${hours} ${t('h')}`;
+      if (hours > 0) return `${hours} ${t('h')} ${minutes} ${t('m')}`;
+      return `${minutes} ${t('m')}`;
+    }
+
+    function renderWipe(wipe) {
+      if (!wipe) return;
+
+      const startDate = wipe.startAt ? new Date(wipe.startAt) : null;
+      const endDate = wipe.endAt ? new Date(wipe.endAt) : null;
+      const now = Date.now();
+      const countdownTarget = startDate && startDate.getTime() > now ? startDate : endDate;
+
+      if (wipeStart) wipeStart.textContent = wipe.startAt ? formatDateTime(wipe.startAt, 'Europe/Moscow') : t('TBA');
+      if (wipeEnd) wipeEnd.textContent = wipe.endAt ? formatDateTime(wipe.endAt, 'Europe/Moscow') : t('TBA');
+      if (wipeNote) wipeNote.textContent = wipe.note || t('The next wipe date will be announced on Discord.');
+      if (wipeCountdown) wipeCountdown.textContent = countdownTarget ? formatCountdown(countdownTarget) : t('TBA');
+    }
+
+    function renderEvents(events) {
+      if (!eventSlider) return;
+
+      const safeEvents = Array.isArray(events) ? events.filter((eventData) => (
+        eventData.title ||
+        eventData.description ||
+        eventData.startsAtMoscow ||
+        eventData.imageUrl ||
+        eventData.location
+      )) : [];
+
+      if (!safeEvents.length) {
+        eventSlider.innerHTML = `
+          <article class="event-slide empty-event">
+            <div class="event-slide-body">
+              <b>${escapeHtml(t('Season Event'))}</b>
+              <h3>${escapeHtml(t('No events posted yet.'))}</h3>
+              <p>${escapeHtml(t('Admins can add event slides from the hidden control page.'))}</p>
+            </div>
+          </article>
+        `;
+        return;
+      }
+
+      eventSlider.innerHTML = safeEvents.map((eventData, index) => {
+        const image = eventData.imageUrl
+          ? `<img src="${escapeHtml(eventData.imageUrl)}" alt="" loading="lazy" />`
+          : `<div class="event-image-placeholder">${escapeHtml(t('REVOLUTION'))}</div>`;
+
+        return `
+          <article class="event-slide">
+            <div class="event-slide-media">${image}</div>
+            <div class="event-slide-body">
+              <b>${escapeHtml(t('Event'))} ${String(index + 1).padStart(2, '0')}</b>
+              <h3>${escapeHtml(eventData.title || t('Season Event'))}</h3>
+              <p>${escapeHtml(eventData.description || t('Event details will be announced soon.'))}</p>
+              <div class="event-meta-grid">
+                <span><strong>${escapeHtml(t('Moscow'))}</strong>${escapeHtml(eventData.startsAtMoscow ? formatDateTime(eventData.startsAtMoscow, 'Europe/Moscow') : t('TBA'))}</span>
+                <span><strong>${escapeHtml(t('Saudi'))}</strong>${escapeHtml(eventData.startsAtMoscow ? formatDateTime(eventData.startsAtMoscow, 'Asia/Riyadh') : t('TBA'))}</span>
+                <span><strong>${escapeHtml(t('UTC'))}</strong>${escapeHtml(eventData.startsAtMoscow ? formatDateTime(eventData.startsAtMoscow, 'UTC') : t('TBA'))}</span>
+                <span><strong>${escapeHtml(t('Location'))}</strong>${escapeHtml(eventData.location || t('TBA'))}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderSiteControl(data) {
+      currentSiteData = data || {};
+      renderWipe(currentSiteData.wipe);
+      renderEvents(currentSiteData.events);
+
+      clearInterval(wipeCountdownTimer);
+      wipeCountdownTimer = setInterval(() => renderWipe(currentSiteData.wipe), 30000);
+    }
+
+    async function loadSiteControl() {
+      try {
+        const response = await fetch(statusUrl('/api/site-control'), { cache: 'no-store' });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Could not load site controls');
+        }
+
+        renderSiteControl(data);
+      } catch {
+        renderSiteControl({});
+      }
+    }
+
+    feedbackForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const formData = new FormData(feedbackForm);
+      const name = String(formData.get('name') || '').trim();
+      const message = String(formData.get('message') || '').trim();
+      const audioWasPlaying = bgMusic && !bgMusic.paused;
+      const audioTime = bgMusic?.currentTime || 0;
+
+      if (!message) {
+        feedbackStatus.textContent = t('Write your feedback first.');
+        feedbackStatus.classList.add('is-error');
+        return;
+      }
+
+      const submitButton = feedbackForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      feedbackStatus.textContent = t('Sending feedback...');
+      feedbackStatus.classList.remove('is-error');
+
+      try {
+        const response = await fetch(statusUrl('/api/feedback'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            message,
+            page: window.location.href
+          })
+        });
+        const result = await response.json().catch(() => ({ ok: false, error: 'Feedback API did not return JSON' }));
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || 'Feedback failed');
+        }
+
+        feedbackForm.reset();
+        feedbackStatus.textContent = t('Feedback sent to Discord.');
+      } catch (error) {
+        feedbackStatus.textContent = t('Could not send. Use Open Channel instead.');
+        feedbackStatus.classList.add('is-error');
+      } finally {
+        submitButton.disabled = false;
+        if (bgMusic && audioWasPlaying && bgMusic.currentTime < audioTime) {
+          bgMusic.currentTime = audioTime;
+        }
+      }
+    });
+
+    window.addEventListener('raidzone:languagechange', () => {
+      setMobileMenu(false);
+      if (currentSiteData) {
+        renderSiteControl(currentSiteData);
+      }
+      loadAdmins();
+      loadSupporters();
+      renderDiscordStatus(latestDiscordStatus);
+      updateMusicToggle();
+    });
+
+    loadAdmins();
+    loadSupporters();
+    loadSiteControl();
+    setInterval(loadSupporters, 60000);
+
+    const audioDock = document.getElementById('audioDock');
+    const audioGate = document.getElementById('audioGate');
+    const bgMusic = document.getElementById('bgMusic');
+    const musicToggle = document.getElementById('musicToggle');
+    const musicVolume = document.getElementById('musicVolume');
+    let lastAudibleVolume = 1;
+    let volumeCloseTimer = null;
+    let userPausedMusic = false;
+    let wheelUnlockDone = false;
+
+    function clampVolume(value) {
+      const number = Number(value);
+      if (Number.isNaN(number)) return 0.35;
+      return Math.min(1, Math.max(0, number));
+    }
+
+    function updateMusicToggle() {
+      if (!bgMusic || !musicToggle) return;
+      const isPlaying = !bgMusic.paused && !bgMusic.muted && bgMusic.volume > 0;
+
+      musicToggle.classList.toggle('is-playing', isPlaying);
+      audioDock?.classList.toggle('is-playing', isPlaying);
+      musicToggle.setAttribute('aria-label', isPlaying ? t('Pause background music') : t('Play background music'));
+
+      if (musicVolume) {
+        musicVolume.value = String(bgMusic.volume);
+      }
+    }
+
+    function openVolumePanel() {
+      if (!audioDock) return;
+      clearTimeout(volumeCloseTimer);
+      audioDock.classList.add('is-open');
+      volumeCloseTimer = setTimeout(() => {
+        audioDock.classList.remove('is-open');
+      }, 2000);
+    }
+
+    function closeVolumePanelSoon() {
+      if (!audioDock) return;
+      clearTimeout(volumeCloseTimer);
+      volumeCloseTimer = setTimeout(() => {
+        audioDock.classList.remove('is-open');
+      }, 2000);
+    }
+
+    function showAudioGate() {
+      if (!audioGate || userPausedMusic) return;
+      audioGate.hidden = false;
+      requestAnimationFrame(() => audioGate.classList.add('is-visible'));
+    }
+
+    function hideAudioGate() {
+      if (!audioGate) return;
+      audioGate.classList.remove('is-visible');
+      setTimeout(() => {
+        audioGate.hidden = true;
+      }, 220);
+    }
+
+    async function playBackgroundMusic() {
+      if (!bgMusic) return;
+
+      try {
+        bgMusic.autoplay = true;
+        bgMusic.volume = bgMusic.volume > 0 ? bgMusic.volume : 1;
+        await bgMusic.play();
+        hideAudioGate();
+      } catch (error) {
+        showAudioGate();
+        return;
+      } finally {
+        updateMusicToggle();
+      }
+    }
+
+    async function startAudibleMusic() {
+      if (!bgMusic) return;
+      userPausedMusic = false;
+      bgMusic.muted = false;
+      bgMusic.volume = 1;
+      musicVolume.value = '1';
+      await playBackgroundMusic();
+    }
+
+    async function startAutoplayFlow() {
+      if (!bgMusic || userPausedMusic) return;
+
+      bgMusic.volume = 1;
+      bgMusic.muted = false;
+      musicVolume.value = '1';
+
+      try {
+        await bgMusic.play();
+        hideAudioGate();
+      } catch (error) {
+        showAudioGate();
+      } finally {
+        updateMusicToggle();
+      }
+    }
+
+    if (bgMusic && musicToggle && musicVolume) {
+      localStorage.removeItem('raidzoneMusicVolume');
+      localStorage.removeItem('raidzoneMusicVolumeV2');
+      localStorage.removeItem('raidzoneMusicMuted');
+      bgMusic.volume = 1;
+      bgMusic.muted = false;
+      bgMusic.defaultMuted = false;
+      bgMusic.autoplay = true;
+      musicVolume.value = '1';
+
+      audioDock?.addEventListener('mouseenter', openVolumePanel);
+      audioDock?.addEventListener('mousemove', openVolumePanel);
+      audioDock?.addEventListener('pointerdown', openVolumePanel);
+      audioDock?.addEventListener('focusin', openVolumePanel);
+      audioDock?.addEventListener('mouseleave', closeVolumePanelSoon);
+      audioDock?.addEventListener('focusout', closeVolumePanelSoon);
+
+      musicToggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (bgMusic.paused) {
+          startAudibleMusic();
+          return;
+        }
+
+        userPausedMusic = true;
+        bgMusic.pause();
+        updateMusicToggle();
+      });
+
+      musicVolume.addEventListener('input', () => {
+        openVolumePanel();
+        const nextVolume = clampVolume(musicVolume.value);
+        bgMusic.volume = nextVolume;
+        if (nextVolume > 0) {
+          lastAudibleVolume = nextVolume;
+          userPausedMusic = false;
+          bgMusic.muted = false;
+          if (bgMusic.paused) {
+            playBackgroundMusic();
+          }
+        }
+        updateMusicToggle();
+      });
+
+      const unlockAudio = () => {
+        if (!userPausedMusic && bgMusic.paused && bgMusic.volume > 0) {
+          playBackgroundMusic();
+        }
+      };
+
+      const unlockAudioOnWheel = (event) => {
+        if (wheelUnlockDone || event.deltaY <= 0 || userPausedMusic) return;
+        wheelUnlockDone = true;
+        startAudibleMusic();
+        window.removeEventListener('wheel', unlockAudioOnWheel);
+      };
+
+      const enterFromGate = (event) => {
+        if (event.target.closest('.language-picker')) return;
+        event.preventDefault();
+        startAudibleMusic();
+      };
+
+      const enterFromGateWheel = (event) => {
+        if (event.deltaY <= 0) return;
+        enterFromGate(event);
+      };
+
+      bgMusic.load();
+      startAutoplayFlow();
+      audioGate?.addEventListener('pointerdown', enterFromGate);
+      audioGate?.addEventListener('wheel', enterFromGateWheel, { passive: false });
+      window.addEventListener('keydown', (event) => {
+        if (audioGate?.hidden || !['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        startAudibleMusic();
+      });
+      document.addEventListener('DOMContentLoaded', unlockAudio, { once: true });
+      window.addEventListener('load', unlockAudio, { once: true });
+      window.addEventListener('wheel', unlockAudioOnWheel, { passive: true });
+      setTimeout(unlockAudio, 250);
+      setTimeout(unlockAudio, 1200);
+      bgMusic.addEventListener('play', updateMusicToggle);
+      bgMusic.addEventListener('pause', updateMusicToggle);
+      bgMusic.addEventListener('volumechange', updateMusicToggle);
+      updateMusicToggle();
+    }
+
+    const discordOnline = document.getElementById('discordOnline');
+    let latestDiscordStatus = null;
+
+    function renderDiscordStatus(status) {
+      if (!discordOnline) return;
+      latestDiscordStatus = status || latestDiscordStatus;
+
+      if (status && typeof status.online === 'number') {
+        discordOnline.textContent = `${status.online} ${t('online')}`;
+        return;
+      }
+
+      if (status?.source === 'bot-token-missing' || status?.source === 'discord-gateway-error') {
+        discordOnline.textContent = t('bot setup needed');
+        return;
+      }
+
+      if (!discordOnline.textContent.includes(t('online'))) {
+        discordOnline.textContent = t('checking online');
+      }
+    }
+
+    async function updateDiscordOnline() {
+      if (!discordOnline) return;
+
+      try {
+        const response = await fetch(statusUrl('/api/discord-status'), { cache: 'no-store' });
+        const status = await response.json();
+        renderDiscordStatus(status);
+      } catch (error) {
+        renderDiscordStatus({ source: 'network-retry' });
+      }
+    }
+
+    function startDiscordStatusStream() {
+      if (!discordOnline) return;
+
+      updateDiscordOnline();
+
+      if (!('EventSource' in window)) {
+        setInterval(updateDiscordOnline, 2000);
+        return;
+      }
+
+      const stream = new EventSource(statusUrl('/api/discord-status-stream'));
+      stream.onmessage = (event) => {
+        try {
+          renderDiscordStatus(JSON.parse(event.data));
+        } catch (error) {
+          updateDiscordOnline();
+        }
+      };
+      stream.onerror = () => {
+        updateDiscordOnline();
+      };
+    }
+
+    startDiscordStatusStream();
+
+    // --- ELECTRIC EFFECTS & SCROLL DYNAMICS ---
+    (function initElectricEngine() {
+      const canvas = document.getElementById('electricCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      let width = 0;
+      let height = 0;
+      let particles = [];
+      let lightningBolts = [];
+      let lastScrollY = window.scrollY;
+      let scrollSpeed = 0;
+      let scrollVelocity = 0;
+      let isVisible = true;
+      let animationFrameId = null;
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+
+      window.addEventListener('resize', resize, { passive: true });
+      resize();
+
+      class Spark {
+        constructor() {
+          this.reset(true);
+        }
+        reset(initial = false) {
+          this.x = Math.random() * width;
+          this.y = initial ? Math.random() * height : (scrollVelocity >= 0 ? height + 10 : -10);
+          this.size = Math.random() * 2.2 + 0.6;
+          this.baseVx = (Math.random() - 0.5) * 1.2;
+          this.baseVy = -(Math.random() * 1.5 + 0.5);
+          this.alpha = Math.random() * 0.7 + 0.3;
+          this.life = Math.random() * 120 + 80;
+          this.age = 0;
+          this.color = Math.random() > 0.3 ? '#ffe600' : (Math.random() > 0.5 ? '#fff466' : '#ffffff');
+        }
+        update() {
+          this.age++;
+          const vy = this.baseVy - (scrollSpeed * 0.08);
+          this.x += this.baseVx + (Math.random() - 0.5) * 0.8;
+          this.y += vy;
+
+          if (this.age > this.life || this.y < -20 || this.y > height + 20 || this.x < -20 || this.x > width + 20) {
+            this.reset(false);
+          }
+        }
+        draw(context) {
+          const progress = this.age / this.life;
+          const fade = progress < 0.2 ? progress / 0.2 : (progress > 0.7 ? (1 - progress) / 0.3 : 1);
+          context.save();
+          context.globalAlpha = this.alpha * fade;
+          context.fillStyle = this.color;
+          context.shadowColor = '#ffe600';
+          context.shadowBlur = this.size * 5;
+          context.beginPath();
+          context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          context.fill();
+          context.restore();
+        }
+      }
+
+      class Lightning {
+        constructor() {
+          this.segments = [];
+          this.life = 0;
+          this.maxLife = Math.floor(Math.random() * 8 + 6);
+          this.generate();
+        }
+        generate() {
+          const startX = Math.random() * width;
+          const startY = Math.random() * (height * 0.6);
+          let curX = startX;
+          let curY = startY;
+          const length = Math.random() * 180 + 90;
+          const steps = Math.floor(length / 14);
+
+          this.segments.push({ x: curX, y: curY });
+          for (let i = 0; i < steps; i++) {
+            curX += (Math.random() - 0.5) * 38;
+            curY += Math.random() * 22 + 4;
+            this.segments.push({ x: curX, y: curY });
+          }
+        }
+        update() {
+          this.life++;
+        }
+        draw(context) {
+          if (!this.segments.length) return;
+          const opacity = (1 - (this.life / this.maxLife)) * 0.75;
+          context.save();
+          context.strokeStyle = '#ffe600';
+          context.lineWidth = Math.random() * 2 + 1;
+          context.shadowColor = '#ffffff';
+          context.shadowBlur = 18;
+          context.globalAlpha = opacity;
+          context.beginPath();
+          context.moveTo(this.segments[0].x, this.segments[0].y);
+          for (let i = 1; i < this.segments.length; i++) {
+            context.lineTo(this.segments[i].x, this.segments[i].y);
+          }
+          context.stroke();
+          context.restore();
+        }
+      }
+
+      const count = Math.min(48, Math.floor(window.innerWidth / 30));
+      for (let i = 0; i < count; i++) {
+        particles.push(new Spark());
+      }
+
+      let scrollTimeout;
+      window.addEventListener('scroll', () => {
+        const currentY = window.scrollY;
+        scrollVelocity = currentY - lastScrollY;
+        scrollSpeed = Math.min(25, Math.max(-25, scrollVelocity));
+        lastScrollY = currentY;
+
+        // Trigger occasional electric voltage on fast scroll
+        if (Math.abs(scrollVelocity) > 18 && lightningBolts.length < 3 && Math.random() > 0.6) {
+          lightningBolts.push(new Lightning());
+        }
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          scrollSpeed = 0;
+          scrollVelocity = 0;
+        }, 120);
+      }, { passive: true });
+
+      function animate() {
+        if (!isVisible) return;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Rare ambient lightning bolt
+        if (Math.random() < 0.012 && lightningBolts.length < 2) {
+          lightningBolts.push(new Lightning());
+        }
+
+        // Draw and update sparks
+        particles.forEach((p) => {
+          p.update();
+          p.draw(ctx);
+        });
+
+        // Draw and update lightning bolts
+        for (let i = lightningBolts.length - 1; i >= 0; i--) {
+          const bolt = lightningBolts[i];
+          bolt.update();
+          bolt.draw(ctx);
+          if (bolt.life >= bolt.maxLife) {
+            lightningBolts.splice(i, 1);
+          }
+        }
+
+        animationFrameId = requestAnimationFrame(animate);
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        isVisible = !document.hidden;
+        if (isVisible) {
+          cancelAnimationFrame(animationFrameId);
+          animate();
+        }
+      });
+
+      animate();
+    })();
+
+    // --- SCROLL REVEAL & DYNAMIC MOVEMENT OBSERVER ---
+    (function initScrollReveal() {
+      const targets = document.querySelectorAll(
+        '.about-copy, .about-card, .download-card, .event-slide, .terminal-panel, .event-panel, .support-card, .feedback-card, .rule-category, .server-card, .hero-copy'
+      );
+
+      targets.forEach((el) => el.classList.add('reveal-init'));
+
+      if (!('IntersectionObserver' in window)) {
+        targets.forEach((el) => el.classList.add('is-revealed'));
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const rect = entry.boundingClientRect;
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+          } else if (rect.top > 0) {
+            // When user scrolls back up and element leaves the bottom, smoothly glide out to the sides!
+            entry.target.classList.remove('is-revealed');
+          }
+        });
+      }, {
+        threshold: 0.12,
+        rootMargin: '0px 0px -40px 0px'
+      });
+
+      targets.forEach((el) => observer.observe(el));
+    })();
+  </script>
+</body>
+</html>

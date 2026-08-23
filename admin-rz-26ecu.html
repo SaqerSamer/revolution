@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Revolution Admin Control</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root{
+      --bg:#070709;
+      --panel:rgba(18,18,22,.88);
+      --txt:#fbfaff;
+      --muted:#a6a4b8;
+      --yellow:#ffe600;
+      --gold:#ffd000;
+      --amber:#f59e0b;
+      --line:rgba(255,230,0,.16);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--txt);
+      font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 16% 8%, rgba(255,230,0,.15), transparent 30%),
+        radial-gradient(circle at 86% 18%, rgba(245,158,11,.12), transparent 28%),
+        linear-gradient(180deg, var(--bg), #0f0f14);
+    }
+    main{width:min(100% - 32px, 1120px);margin:0 auto;padding:34px 0 60px}
+    header{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:center;
+      margin-bottom:24px;
+      padding:18px 20px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(12,12,16,.85);
+      backdrop-filter:blur(16px);
+      box-shadow:0 12px 36px rgba(0,0,0,.45);
+    }
+    h1,h2,p{margin-top:0}
+    h1{margin-bottom:6px;font-size:clamp(1.9rem,4vw,3.2rem);font-weight:900;color:#fff;text-shadow:0 0 18px rgba(255,230,0,.4)}
+    header p{margin:0;color:var(--muted)}
+    a{color:inherit;text-decoration:none}
+    .open-site,.save-button,.small-button,.login-button,.logout-button{
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      min-height:44px;
+      border:1px solid rgba(255,230,0,.35);
+      border-radius:10px;
+      padding:0 20px;
+      color:#000000;
+      background:linear-gradient(135deg, var(--yellow), #ffc400);
+      font-weight:900;
+      cursor:pointer;
+      transition:transform .18s ease, box-shadow .18s ease;
+    }
+    .open-site:hover,.save-button:hover,.login-button:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 24px rgba(255,230,0,.35);
+    }
+    .small-button{
+      min-height:38px;
+      color:var(--txt);
+      background:rgba(255,255,255,.06);
+      border-color:rgba(255,255,255,.16);
+    }
+    .small-button:hover{
+      border-color:var(--yellow);
+      background:rgba(255,230,0,.12);
+    }
+    .header-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:flex-end;
+    }
+    .logout-button{
+      color:var(--yellow);
+      background:rgba(255,255,255,.06);
+      border-color:rgba(255,230,0,.3);
+    }
+    .logout-button:hover{
+      background:rgba(255,230,0,.12);
+      border-color:var(--yellow);
+    }
+    .login-shell{
+      width:min(100%, 460px);
+      margin:42px auto 0;
+    }
+    .login-button,.save-button{width:auto}
+    .locked-field{
+      color:var(--yellow);
+      font-weight:900;
+      letter-spacing:.08em;
+    }
+    .grid{display:grid;grid-template-columns:.88fr 1.12fr;gap:18px}
+    .panel{
+      padding:22px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:var(--panel);
+      box-shadow:0 24px 80px rgba(0,0,0,.45);
+    }
+    .panel h2{margin-bottom:14px;color:var(--yellow);font-size:1.35rem;font-weight:900}
+    label{display:grid;gap:8px;margin-bottom:14px;color:var(--muted);font-size:.85rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+    input,textarea{
+      width:100%;
+      border:1px solid rgba(255,230,0,.18);
+      border-radius:12px;
+      padding:12px 13px;
+      color:var(--txt);
+      background:rgba(8,8,12,.55);
+      font:inherit;
+      outline:none;
+      color-scheme:dark;
+      transition:border-color .18s ease, box-shadow .18s ease;
+    }
+    input[type="date"],
+    input[type="time"]{
+      color:#fff;
+      background:rgba(8,8,12,.72);
+      background-repeat:no-repeat;
+      background-position:right 14px center;
+      background-size:16px 16px;
+      padding-right:44px;
+    }
+    input[type="date"]{
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ffe600' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E");
+    }
+    input[type="time"]{
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ffe600' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator{
+      opacity:0;
+      cursor:pointer;
+      width:40px;
+      height:100%;
+    }
+    input[type="date"]::-webkit-datetime-edit,
+    input[type="time"]::-webkit-datetime-edit,
+    input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+    input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+    input[type="date"]::-webkit-datetime-edit-text,
+    input[type="time"]::-webkit-datetime-edit-text,
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field,
+    input[type="time"]::-webkit-datetime-edit-hour-field,
+    input[type="time"]::-webkit-datetime-edit-minute-field,
+    input[type="time"]::-webkit-datetime-edit-ampm-field{
+      color:#fff;
+    }
+    textarea{min-height:132px;resize:vertical;line-height:1.55}
+    input:focus,textarea:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,230,0,.15)}
+    .hint{margin:-4px 0 14px;color:var(--yellow);font-size:.9rem;line-height:1.6}
+    .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:8px}
+    .status{min-height:24px;margin:0;color:var(--yellow);font-weight:900}
+    .status.error{color:#ff4d4d}
+    .events-list{display:grid;gap:16px;margin-bottom:18px}
+    #addEvent{margin-top:2px}
+    .no-events-state{
+      padding:18px;
+      border:1px dashed rgba(255,230,0,.35);
+      border-radius:16px;
+      color:var(--muted);
+      background:rgba(8,8,12,.25);
+      line-height:1.6;
+    }
+    .event-editor{
+      padding:16px;
+      border:1px solid rgba(255,230,0,.15);
+      border-radius:16px;
+      background:rgba(8,8,12,.35);
+    }
+    .event-editor-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .event-editor-top strong{color:var(--yellow);letter-spacing:.08em;text-transform:uppercase;font-weight:900}
+    .remove-event{border-color:rgba(255,77,77,.4);color:#ff7777}
+    .remove-event:hover{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ff4d4d}
+    .date-time-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .image-upload-row{
+      display:grid;
+      grid-template-columns:150px minmax(0,1fr);
+      gap:16px;
+      align-items:stretch;
+      margin-bottom:14px;
+    }
+    .event-image-preview{
+      display:grid;
+      place-items:center;
+      width:150px;
+      min-height:110px;
+      overflow:hidden;
+      border:1px solid rgba(255,230,0,.2);
+      border-radius:12px;
+      color:var(--muted);
+      background:
+        radial-gradient(circle at 35% 25%, rgba(255,230,0,.15), transparent 32%),
+        rgba(8,8,12,.6);
+      font-size:.76rem;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-align:center;
+    }
+    .event-image-preview img{width:100%;height:100%;object-fit:cover}
+    .upload-stack{
+      display:grid;
+      align-content:center;
+      gap:8px;
+      min-height:110px;
+      padding:14px;
+      border:1px solid rgba(255,230,0,.15);
+      border-radius:12px;
+      background:rgba(8,8,12,.4);
+    }
+    .upload-stack strong{
+      color:var(--txt);
+      font-size:.92rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .upload-stack p{
+      margin:0;
+      color:var(--muted);
+      font-size:.86rem;
+      line-height:1.45;
+    }
+    .upload-button{
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      width:max-content;
+      min-height:38px;
+      margin:2px 0 0;
+      padding:0 16px;
+      border:1px solid rgba(255,230,0,.4);
+      border-radius:10px;
+      color:#000000;
+      background:linear-gradient(135deg, var(--yellow), #ffc400);
+      font-size:.84rem;
+      font-weight:1000;
+      letter-spacing:.04em;
+      cursor:pointer;
+      text-transform:none;
+      transition:transform .18s ease, box-shadow .18s ease;
+    }
+    .upload-button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 6px 18px rgba(255,230,0,.35);
+    }
+    .upload-button input{display:none}
+    @media (max-width:820px){
+      header{align-items:flex-start;flex-direction:column}
+      .grid{grid-template-columns:1fr}
+      .date-time-grid,.image-upload-row{grid-template-columns:1fr}
+      .event-image-preview{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header id="controlHeader" hidden>
+      <div>
+        <h1>Revolution Control</h1>
+        <p>Hidden admin page for Wipe and Event content.</p>
+      </div>
+      <div class="header-actions">
+        <a class="open-site" href="/" target="_blank" rel="noreferrer">Open Site</a>
+        <button id="logoutButton" class="logout-button" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section id="loginView" class="login-shell">
+      <form id="loginForm" class="panel">
+        <h2>Admin Login</h2>
+        <label>
+          Username
+          <input id="adminUsername" class="locked-field" type="text" value="Admin" readonly />
+        </label>
+        <label>
+          Password
+          <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Enter password" required />
+        </label>
+        <button class="login-button" type="submit">Enter Control Panel</button>
+        <p id="loginStatus" class="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <form id="controlForm" hidden>
+      <div class="grid" style="margin-top:18px">
+        <section class="panel">
+          <h2>Wipe</h2>
+          <div class="date-time-grid">
+            <label>
+              Start Day
+              <input id="wipeStartDateInput" type="date" />
+            </label>
+            <label>
+              Start Time - Moscow
+              <input id="wipeStartTimeInput" type="time" />
+            </label>
+          </div>
+          <div class="date-time-grid">
+            <label>
+              End Day
+              <input id="wipeEndDateInput" type="date" />
+            </label>
+            <label>
+              End Time - Moscow
+              <input id="wipeEndTimeInput" type="time" />
+            </label>
+          </div>
+          <label>
+            Wipe Note
+            <textarea id="wipeNoteInput" maxlength="220" placeholder="Write the message shown under Next Wipe"></textarea>
+          </label>
+          <p class="hint">Dates are saved as Moscow time.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Season Events</h2>
+          <p class="hint">Each event becomes a slide on the website. Enter the event time in Moscow time.</p>
+          <div id="eventsList" class="events-list"></div>
+          <button id="addEvent" class="small-button" type="button">Add Event</button>
+        </section>
+      </div>
+
+      <div class="actions">
+        <button class="save-button" type="submit">Save Changes</button>
+        <p id="status" class="status" aria-live="polite"></p>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const ADMIN_USERNAME = 'Admin';
+    const ADMIN_PASSWORD = 'AlamouriVivi';
+    const ADMIN_SESSION_KEY = 'revolutionAdminSession';
+    const API_ORIGIN = location.protocol === 'file:' ? 'http://127.0.0.1:20000' : '';
+    let activeAdminPassword = '';
+    const loginView = document.getElementById('loginView');
+    const controlHeader = document.getElementById('controlHeader');
+    const logoutButton = document.getElementById('logoutButton');
+    const loginForm = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('adminUsername');
+    const passwordInput = document.getElementById('adminPassword');
+    const loginStatus = document.getElementById('loginStatus');
+    const statusText = document.getElementById('status');
+    const form = document.getElementById('controlForm');
+    const eventsList = document.getElementById('eventsList');
+    const addEventButton = document.getElementById('addEvent');
+    let eventsState = [];
+
+    const fields = {
+      wipeStartDate: document.getElementById('wipeStartDateInput'),
+      wipeStartTime: document.getElementById('wipeStartTimeInput'),
+      wipeEndDate: document.getElementById('wipeEndDateInput'),
+      wipeEndTime: document.getElementById('wipeEndTimeInput'),
+      wipeNote: document.getElementById('wipeNoteInput')
+    };
+
+    function apiUrl(path) {
+      return `${API_ORIGIN}${path}`;
+    }
+
+    function friendlyFetchError(error, fallbackMessage) {
+      const message = String(error?.message || '');
+      return message.includes('Failed to fetch')
+        ? 'Cannot reach the save server. Open the admin page from the live link and make sure Node is running on port 20000.'
+        : (message || fallbackMessage);
+    }
+
+    function showStatus(message, isError = false) {
+      statusText.textContent = message;
+      statusText.classList.toggle('error', isError);
+    }
+
+    function showLoginStatus(message, isError = false) {
+      loginStatus.textContent = message;
+      loginStatus.classList.toggle('error', isError);
+    }
+
+    function unlockControlPanel(rememberSession = true) {
+      activeAdminPassword = ADMIN_PASSWORD;
+      passwordInput.value = ADMIN_PASSWORD;
+      if (rememberSession) {
+        localStorage.setItem(ADMIN_SESSION_KEY, 'active');
+      }
+      loginView.hidden = true;
+      controlHeader.hidden = false;
+      form.hidden = false;
+      loadData();
+    }
+
+    function logoutControlPanel() {
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      activeAdminPassword = '';
+      passwordInput.value = '';
+      loginStatus.textContent = '';
+      statusText.textContent = '';
+      form.hidden = true;
+      controlHeader.hidden = true;
+      loginView.hidden = false;
+      usernameInput.value = ADMIN_USERNAME;
+      passwordInput.focus();
+    }
+
+    function storedToMoscowParts(value) {
+      const date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return { day: '', time: '' };
+
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Moscow',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        hourCycle: 'h23'
+      }).formatToParts(date).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+
+      return {
+        day: `${parts.year}-${parts.month}-${parts.day}`,
+        time: `${parts.hour}:${parts.minute}`
+      };
+    }
+
+    function moscowPartsToStored(day, time) {
+      return day && time ? `${day}T${time}:00+03:00` : '';
+    }
+
+    function createBlankEvent() {
+      return {
+        id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: '',
+        startsAtMoscow: '',
+        location: '',
+        imageUrl: '',
+        description: ''
+      };
+    }
+
+    function renderEventsEditor() {
+      if (!eventsList) return;
+      if (!eventsState.length) {
+        eventsList.innerHTML = '<div class="no-events-state">No events yet. Click Add Event to create one.</div>';
+        return;
+      }
+
+      eventsList.innerHTML = eventsState.map((eventData, index) => {
+        const eventTime = storedToMoscowParts(eventData.startsAtMoscow);
+        const preview = eventData.imageUrl
+          ? `<img src="${escapeAttribute(eventData.imageUrl)}" alt="" />`
+          : 'NO IMAGE';
+
+        return `
+          <section class="event-editor" data-index="${index}">
+            <div class="event-editor-top">
+              <strong>Event ${String(index + 1).padStart(2, '0')}</strong>
+              <button class="small-button remove-event" type="button" data-remove="${index}">Remove</button>
+            </div>
+            <label>
+              Event Title
+              <input data-event-field="title" maxlength="90" placeholder="Season Event" value="${escapeAttribute(eventData.title)}" />
+            </label>
+            <div class="date-time-grid">
+              <label>
+                Event Day
+                <input data-event-field="eventDay" type="date" value="${eventTime.day}" />
+              </label>
+              <label>
+                Event Time - Moscow
+                <input data-event-field="eventTime" type="time" value="${eventTime.time}" />
+              </label>
+            </div>
+            <label>
+              In-game Location
+              <input data-event-field="location" maxlength="140" placeholder="Map location / arena / coordinates" value="${escapeAttribute(eventData.location)}" />
+            </label>
+            <div class="image-upload-row">
+              <div class="event-image-preview" data-preview="${index}">${preview}</div>
+              <div class="upload-stack">
+                <strong>Event Image</strong>
+                <p>Upload PNG, JPG, JPEG, WEBP, or GIF directly from your device.</p>
+                <label class="upload-button">
+                  Choose Image
+                  <input data-event-upload="${index}" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+                </label>
+                <input data-event-field="imageUrl" type="hidden" value="${escapeAttribute(eventData.imageUrl)}" />
+              </div>
+            </div>
+            <label>
+              Event Details
+              <textarea data-event-field="description" maxlength="500" placeholder="Write event rules, rewards, and details">${escapeHtml(eventData.description)}</textarea>
+            </label>
+          </section>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[character]));
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/`/g, '&#96;');
+    }
+
+    function syncEventsFromDom() {
+      eventsState = Array.from(eventsList.querySelectorAll('.event-editor')).map((editor, index) => {
+        const getValue = (field) => editor.querySelector(`[data-event-field="${field}"]`)?.value || '';
+        return {
+          id: eventsState[index]?.id || `event-${index + 1}`,
+          title: getValue('title'),
+          startsAtMoscow: moscowPartsToStored(getValue('eventDay'), getValue('eventTime')),
+          location: getValue('location'),
+          imageUrl: getValue('imageUrl'),
+          description: getValue('description')
+        };
+      });
+    }
+
+    function fillForm(data) {
+      const wipeStart = storedToMoscowParts(data?.wipe?.startAt);
+      const wipeEnd = storedToMoscowParts(data?.wipe?.endAt);
+      fields.wipeStartDate.value = wipeStart.day;
+      fields.wipeStartTime.value = wipeStart.time;
+      fields.wipeEndDate.value = wipeEnd.day;
+      fields.wipeEndTime.value = wipeEnd.time;
+      fields.wipeNote.value = data?.wipe?.note || '';
+      eventsState = Array.isArray(data?.events) ? data.events : [];
+      renderEventsEditor();
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch(apiUrl('/api/site-control'), { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Load failed');
+        fillForm(data);
+      } catch (error) {
+        showStatus('Could not load current site data.', true);
+      }
+    }
+
+    loginForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+        showLoginStatus('Wrong username or password.', true);
+        return;
+      }
+
+      showLoginStatus('');
+      unlockControlPanel(true);
+    });
+
+    logoutButton.addEventListener('click', logoutControlPanel);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      syncEventsFromDom();
+
+      const payload = {
+        wipe: {
+          startAt: moscowPartsToStored(fields.wipeStartDate.value, fields.wipeStartTime.value),
+          endAt: moscowPartsToStored(fields.wipeEndDate.value, fields.wipeEndTime.value),
+          note: fields.wipeNote.value
+        },
+        events: eventsState
+      };
+
+      showStatus('Saving...');
+      try {
+        const response = await fetch(apiUrl('/api/site-control'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${activeAdminPassword}`
+          },
+          body: JSON.stringify({ adminPassword: activeAdminPassword, data: payload })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Save failed');
+        fillForm(data);
+        showStatus('Saved. The website will update automatically.');
+      } catch (error) {
+        showStatus(friendlyFetchError(error, 'Could not save changes.'), true);
+      }
+    });
+
+    addEventButton.addEventListener('click', () => {
+      syncEventsFromDom();
+      eventsState.push(createBlankEvent());
+      renderEventsEditor();
+    });
+
+    eventsList.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-remove]');
+      if (!removeButton) return;
+      syncEventsFromDom();
+      const index = Number(removeButton.dataset.remove);
+      eventsState.splice(index, 1);
+      renderEventsEditor();
+    });
+
+    async function uploadEventImage(fileInput) {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      if (!activeAdminPassword) {
+        showStatus('Login again before uploading an image.', true);
+        fileInput.value = '';
+        return;
+      }
+
+      if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+        showStatus('Use PNG, JPG, JPEG, WEBP, or GIF only.', true);
+        fileInput.value = '';
+        return;
+      }
+
+      showStatus('Uploading image...');
+
+      const response = await fetch(apiUrl('/api/upload-event-image'), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeAdminPassword}`,
+          'Content-Type': file.type,
+          'X-File-Name': encodeURIComponent(file.name)
+        },
+        body: file
+      });
+      const data = await response.json().catch(() => ({ ok: false, error: 'Upload server did not return JSON' }));
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Image upload failed');
+      }
+
+      const editor = fileInput.closest('.event-editor');
+      const imageUrlInput = editor.querySelector('[data-event-field="imageUrl"]');
+      const preview = editor.querySelector('.event-image-preview');
+      imageUrlInput.value = data.imageUrl;
+      preview.innerHTML = `<img src="${escapeAttribute(data.imageUrl)}" alt="" />`;
+      syncEventsFromDom();
+      showStatus('Image uploaded. Click Save Changes to publish it.');
+    }
+
+    eventsList.addEventListener('change', async (event) => {
+      const fileInput = event.target.closest('[data-event-upload]');
+      if (!fileInput) return;
+
+      try {
+        await uploadEventImage(fileInput);
+      } catch (error) {
+        const message = String(error.message || '');
+        showStatus(message.includes('Failed to fetch')
+          ? 'Upload failed because the save server is not reachable. Open the admin page from the live link and make sure Node is running on port 20000.'
+          : (message || 'Could not upload image.'), true);
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const pickerInput = event.target.closest('input[type="date"], input[type="time"]');
+      if (!pickerInput) return;
+
+      pickerInput.focus();
+      if (typeof pickerInput.showPicker === 'function') {
+        try {
+          pickerInput.showPicker();
+        } catch {
+          pickerInput.click();
+        }
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      const pickerInput = event.target.closest('input[type="date"], input[type="time"]');
+      if (!pickerInput || typeof pickerInput.showPicker !== 'function') return;
+
+      event.preventDefault();
+      pickerInput.showPicker();
+    });
+
+    usernameInput.value = ADMIN_USERNAME;
+    if (localStorage.getItem(ADMIN_SESSION_KEY) === 'active') {
+      unlockControlPanel(false);
+    }
+  </script>
+</body>
+</html>

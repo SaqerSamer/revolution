@@ -32,12 +32,12 @@ const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || '1506948630903521290';
 const DISCORD_FEEDBACK_CHANNEL_ID = process.env.DISCORD_FEEDBACK_CHANNEL_ID || '1506948631360442411';
 const DISCORD_ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID || '1506948630920167458';
 const DISCORD_SUPPORTER_ROLE_ID = process.env.DISCORD_SUPPORTER_ROLE_ID || '1506948630907457714';
-const DISCORD_ADMIN_ROLE_NAMES = (process.env.DISCORD_ADMIN_ROLE_NAMES || 'admin,admins,administrator,staff,ادمن')
+const DISCORD_ADMIN_ROLE_NAMES = (process.env.DISCORD_ADMIN_ROLE_NAMES || 'admin,admins,administrator,staff,ادمن,owner,moderator,mod')
   .split(',')
   .map((roleName) => roleName.trim().toLowerCase())
   .filter(Boolean);
 
-const DISCORD_SUPPORTER_ROLE_NAMES = (process.env.DISCORD_SUPPORTER_ROLE_NAMES || 'sabscriper,subscriber,subscribers,supporter,supporters,donator,donors')
+const DISCORD_SUPPORTER_ROLE_NAMES = (process.env.DISCORD_SUPPORTER_ROLE_NAMES || 'sponsor,sponsors,sabscriper,subscriber,subscribers,supporter,supporters,gold,silver,platinum,donator,donors,booster')
   .split(',')
   .map((roleName) => roleName.trim().toLowerCase())
   .filter(Boolean);
@@ -183,7 +183,74 @@ function startDiscordGateway() {
     ]
   });
 
-  discordClient.once(Events.ClientReady, () => {
+  async function syncDiscordGuildData() {
+    if (!discordClient || !discordClient.isReady()) return;
+    try {
+      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+      if (!guild) return;
+
+      await guild.roles.fetch().catch(() => null);
+      const members = await guild.members.fetch({ time: 15000 }).catch(() => guild.members.cache);
+
+      const adminMembers = members
+        .filter((member) => member.roles.cache.some((role) => {
+          if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
+          const name = String(role.name || '').toLowerCase();
+          return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
+        }))
+        .map((member) => {
+          const user = member.user || {};
+          return {
+            id: user.id,
+            name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Admin', 80),
+            username: cleanDiscordText(user.username || 'admin', 80),
+            avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+            url: `https://discord.com/users/${user.id}`
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      adminsCache = {
+        expiresAt: Date.now() + 300000,
+        data: {
+          role: 'Admin',
+          admins: adminMembers
+        }
+      };
+
+      const supporterMembers = members
+        .filter((member) => member.roles.cache.some((role) => {
+          if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
+          const name = String(role.name || '').toLowerCase();
+          return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
+        }))
+        .map((member) => {
+          const user = member.user || {};
+          return {
+            id: user.id,
+            name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Supporter', 80),
+            username: cleanDiscordText(user.username || 'supporter', 80),
+            avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+            url: `https://discord.com/users/${user.id}`
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      supportersCache = {
+        expiresAt: Date.now() + 300000,
+        data: {
+          role: 'Subscribers',
+          supporters: supporterMembers
+        }
+      };
+
+      updateGatewayOnlineCount();
+    } catch (err) {
+      console.warn('Sync Discord guild data error:', err.message);
+    }
+  }
+
+  discordClient.once(Events.ClientReady, async () => {
     const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID);
     if (!guild) {
       setDiscordGatewayStatus({
@@ -193,8 +260,8 @@ function startDiscordGateway() {
       return;
     }
 
-    updateGatewayOnlineCount();
-    setTimeout(updateGatewayOnlineCount, 1500);
+    await syncDiscordGuildData();
+    setInterval(syncDiscordGuildData, 60000);
     console.log(`Discord Gateway connected as ${discordClient.user.tag}`);
   });
 

@@ -176,7 +176,11 @@ function startDiscordGateway() {
   const { Client, Events, GatewayIntentBits } = discord;
 
   discordClient = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences]
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildPresences,
+      GatewayIntentBits.GuildMembers
+    ]
   });
 
   discordClient.once(Events.ClientReady, () => {
@@ -497,44 +501,51 @@ async function getDiscordAdmins() {
   }
 
   if (!DISCORD_BOT_TOKEN) {
-    throw new Error('Discord bot token is missing');
+    return { admins: [], note: 'Discord bot token is missing' };
   }
 
-  const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
-  const adminRole = roles.find((role) => role.id === DISCORD_ADMIN_ROLE_ID)
-    || roles.find((role) => DISCORD_ADMIN_ROLE_NAMES.some((roleName) => String(role.name || '').toLowerCase().includes(roleName)));
+  try {
+    const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
+    const adminRole = roles.find((role) => role.id === DISCORD_ADMIN_ROLE_ID)
+      || roles.find((role) => DISCORD_ADMIN_ROLE_NAMES.some((roleName) => String(role.name || '').toLowerCase().includes(roleName)));
 
-  if (!adminRole) {
-    return {
-      admins: [],
-      note: `None of these roles were found: ${DISCORD_ADMIN_ROLE_NAMES.join(', ')}`
-    };
-  }
-
-  const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
-  const admins = members
-    .filter((member) => Array.isArray(member.roles) && member.roles.includes(adminRole.id))
-    .map((member) => {
-      const user = member.user || {};
+    if (!adminRole) {
       return {
-        id: user.id,
-        name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
-        username: cleanDiscordText(user.username || 'admin', 80),
-        avatar: discordAvatarUrl(member),
-        url: `https://discord.com/users/${user.id}`
+        admins: [],
+        note: `None of these roles were found: ${DISCORD_ADMIN_ROLE_NAMES.join(', ')}`
       };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  adminsCache = {
-    expiresAt: now + 60000,
-    data: {
-      role: adminRole.name,
-      admins
     }
-  };
 
-  return adminsCache.data;
+    const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
+    const admins = members
+      .filter((member) => Array.isArray(member.roles) && member.roles.includes(adminRole.id))
+      .map((member) => {
+        const user = member.user || {};
+        return {
+          id: user.id,
+          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
+          username: cleanDiscordText(user.username || 'admin', 80),
+          avatar: discordAvatarUrl(member),
+          url: `https://discord.com/users/${user.id}`
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    adminsCache = {
+      expiresAt: now + 180000,
+      data: {
+        role: adminRole.name,
+        admins
+      }
+    };
+
+    return adminsCache.data;
+  } catch (error) {
+    if (adminsCache.data) {
+      return adminsCache.data;
+    }
+    return { admins: [], error: error.message };
+  }
 }
 
 async function getDiscordSupporters() {
@@ -544,48 +555,55 @@ async function getDiscordSupporters() {
   }
 
   if (!DISCORD_BOT_TOKEN) {
-    throw new Error('Discord bot token is missing');
+    return { role: null, supporters: [], note: 'Discord bot token is missing' };
   }
 
-  const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
-  const supporterRole = roles.find((role) => role.id === DISCORD_SUPPORTER_ROLE_ID)
-    || roles.find((role) => {
-      const roleName = String(role.name || '').toLowerCase();
-      return DISCORD_SUPPORTER_ROLE_NAMES.some((name) => roleName.includes(name));
-    });
+  try {
+    const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
+    const supporterRole = roles.find((role) => role.id === DISCORD_SUPPORTER_ROLE_ID)
+      || roles.find((role) => {
+        const roleName = String(role.name || '').toLowerCase();
+        return DISCORD_SUPPORTER_ROLE_NAMES.some((name) => roleName.includes(name));
+      });
 
-  if (!supporterRole) {
-    return {
-      role: null,
-      supporters: [],
-      note: `None of these roles were found: ${DISCORD_SUPPORTER_ROLE_NAMES.join(', ')}`
-    };
-  }
-
-  const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
-  const supporters = members
-    .filter((member) => Array.isArray(member.roles) && member.roles.includes(supporterRole.id))
-    .map((member) => {
-      const user = member.user || {};
+    if (!supporterRole) {
       return {
-        id: user.id,
-        name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
-        username: cleanDiscordText(user.username || 'supporter', 80),
-        avatar: discordAvatarUrl(member),
-        url: `https://discord.com/users/${user.id}`
+        role: null,
+        supporters: [],
+        note: `None of these roles were found: ${DISCORD_SUPPORTER_ROLE_NAMES.join(', ')}`
       };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  supportersCache = {
-    expiresAt: now + 60000,
-    data: {
-      role: supporterRole.name,
-      supporters
     }
-  };
 
-  return supportersCache.data;
+    const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
+    const supporters = members
+      .filter((member) => Array.isArray(member.roles) && member.roles.includes(supporterRole.id))
+      .map((member) => {
+        const user = member.user || {};
+        return {
+          id: user.id,
+          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
+          username: cleanDiscordText(user.username || 'supporter', 80),
+          avatar: discordAvatarUrl(member),
+          url: `https://discord.com/users/${user.id}`
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    supportersCache = {
+      expiresAt: now + 180000,
+      data: {
+        role: supporterRole.name,
+        supporters
+      }
+    };
+
+    return supportersCache.data;
+  } catch (error) {
+    if (supportersCache.data) {
+      return supportersCache.data;
+    }
+    return { role: null, supporters: [], error: error.message };
+  }
 }
 
 async function handleAdminsRequest(req, res) {

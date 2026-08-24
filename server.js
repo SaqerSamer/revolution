@@ -274,7 +274,7 @@ function startDiscordGateway() {
 
   discordClient.once(Events.ClientReady, async () => {
     console.log(`Discord Gateway connected as ${discordClient.user.tag}`);
-    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID);
+    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
     if (!guild) {
       setDiscordGatewayStatus({
         source: 'discord-gateway-error',
@@ -283,8 +283,14 @@ function startDiscordGateway() {
       return;
     }
 
-    // Wait 4s for GUILD_MEMBERS_CHUNK events to finish populating the cache before reading it
-    setTimeout(syncDiscordData, 4000);
+    try {
+      await guild.members.fetch();
+    } catch (err) {
+      console.warn('Initial member fetch notice:', err.message);
+    }
+
+    syncDiscordData();
+    updateGatewayOnlineCount();
   });
 
   discordClient.on(Events.PresenceUpdate, (oldPresence, newPresence) => {

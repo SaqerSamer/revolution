@@ -899,6 +899,16 @@ setInterval(() => {
 }, 15000);
 
 const server = http.createServer((req, res) => {
+  // Force automatic HTTPS redirect
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto && proto === 'http') {
+    res.writeHead(301, {
+      Location: `https://${req.headers.host}${req.url}`
+    });
+    res.end();
+    return;
+  }
+
   if (!req.url || !['GET', 'HEAD', 'POST', 'OPTIONS'].includes(req.method || '')) {
     send(res, 405, 'Method Not Allowed');
     return;

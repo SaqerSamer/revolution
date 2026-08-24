@@ -158,28 +158,107 @@ function updateGatewayOnlineCount() {
   });
 }
 
-async function syncDiscordGuildData() {
-  if (!discordClient || !discordClient.isReady()) return;
+let isSyncingDiscord = false;
+
+async function syncDiscordData() {
+  if (isSyncingDiscord) return;
+  isSyncingDiscord = true;
+
   try {
-    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
-    if (!guild) return;
+    if (!DISCORD_BOT_TOKEN) {
+      setDiscordGatewayStatus({
+        source: 'bot-token-missing',
+        error: 'DISCORD_BOT_TOKEN is missing'
+      });
+      return;
+    }
 
-    await guild.roles.fetch().catch(() => null);
-    const members = await guild.members.fetch().catch(() => guild.members.cache);
+    // 1. Try Discord Gateway (WebSocket) if connected
+    if (discordClient && discordClient.isReady()) {
+      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+      if (guild) {
+        await guild.roles.fetch().catch(() => null);
+        const members = await guild.members.fetch().catch(() => guild.members.cache);
 
-    const adminMembers = members
-      .filter((member) => !member.user?.bot && member.roles.cache.some((role) => {
-        if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
-        const name = String(role.name || '').toLowerCase();
-        return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
-      }))
+        const adminMembers = members
+          .filter((member) => !member.user?.bot && member.roles.cache.some((role) => {
+            if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
+            const name = String(role.name || '').toLowerCase();
+            return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
+          }))
+          .map((member) => {
+            const user = member.user || {};
+            return {
+              id: user.id,
+              name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Admin', 80),
+              username: cleanDiscordText(user.username || 'admin', 80),
+              avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+              url: `https://discord.com/users/${user.id}`
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        adminsCache = {
+          expiresAt: Date.now() + 60000,
+          data: { ok: true, role: 'Admin', admins: adminMembers }
+        };
+
+        const supporterMembers = members
+          .filter((member) => !member.user?.bot && member.roles.cache.some((role) => {
+            if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
+            const name = String(role.name || '').toLowerCase();
+            return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
+          }))
+          .map((member) => {
+            const user = member.user || {};
+            return {
+              id: user.id,
+              name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Supporter', 80),
+              username: cleanDiscordText(user.username || 'supporter', 80),
+              avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+              url: `https://discord.com/users/${user.id}`
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        supportersCache = {
+          expiresAt: Date.now() + 60000,
+          data: { ok: true, role: 'Subscribers', supporters: supporterMembers }
+        };
+
+        updateGatewayOnlineCount();
+        return;
+      }
+    }
+
+    // 2. Fallback to Discord REST API (useful for Render shared IPs that block WSS)
+    const [guildData, roles, members] = await Promise.all([
+      discordApi(`/guilds/${DISCORD_GUILD_ID}?with_counts=true`),
+      discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`),
+      discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`)
+    ]);
+
+    const adminRoleIds = new Set(roles.filter((role) => {
+      if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
+      const name = String(role.name || '').toLowerCase();
+      return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
+    }).map(r => r.id));
+
+    const supporterRoleIds = new Set(roles.filter((role) => {
+      if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
+      const name = String(role.name || '').toLowerCase();
+      return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
+    }).map(r => r.id));
+
+    const admins = members
+      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => adminRoleIds.has(rId)))
       .map((member) => {
         const user = member.user || {};
         return {
           id: user.id,
-          name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Admin', 80),
+          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
           username: cleanDiscordText(user.username || 'admin', 80),
-          avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+          avatar: discordAvatarUrl(member),
           url: `https://discord.com/users/${user.id}`
         };
       })
@@ -187,26 +266,18 @@ async function syncDiscordGuildData() {
 
     adminsCache = {
       expiresAt: Date.now() + 60000,
-      data: {
-        ok: true,
-        role: 'Admin',
-        admins: adminMembers
-      }
+      data: { ok: true, role: 'Admin', admins }
     };
 
-    const supporterMembers = members
-      .filter((member) => !member.user?.bot && member.roles.cache.some((role) => {
-        if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
-        const name = String(role.name || '').toLowerCase();
-        return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
-      }))
+    const supporters = members
+      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => supporterRoleIds.has(rId)))
       .map((member) => {
         const user = member.user || {};
         return {
           id: user.id,
-          name: cleanDiscordText(member.displayName || member.nickname || user.globalName || user.username || 'Supporter', 80),
+          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
           username: cleanDiscordText(user.username || 'supporter', 80),
-          avatar: member.displayAvatarURL ? member.displayAvatarURL({ extension: 'png', size: 128 }) : discordAvatarUrl(member),
+          avatar: discordAvatarUrl(member),
           url: `https://discord.com/users/${user.id}`
         };
       })
@@ -214,16 +285,27 @@ async function syncDiscordGuildData() {
 
     supportersCache = {
       expiresAt: Date.now() + 60000,
-      data: {
-        ok: true,
-        role: 'Subscribers',
-        supporters: supporterMembers
-      }
+      data: { ok: true, role: 'Subscribers', supporters }
     };
 
-    updateGatewayOnlineCount();
-  } catch (err) {
-    console.warn('Sync Discord guild data error:', err.message);
+    const onlineCount = typeof guildData.approximate_presence_count === 'number' 
+      ? guildData.approximate_presence_count 
+      : null;
+
+    setDiscordGatewayStatus({
+      online: onlineCount,
+      members: guildData.approximate_member_count ?? discordGatewayStatus.members,
+      source: 'discord-rest',
+      error: null
+    });
+
+  } catch (error) {
+    console.warn('Discord Sync Error:', error.message);
+    if (discordGatewayStatus.source !== 'discord-gateway') {
+      setDiscordGatewayStatus({ error: error.message });
+    }
+  } finally {
+    isSyncingDiscord = false;
   }
 }
 
@@ -270,8 +352,7 @@ function startDiscordGateway() {
       return;
     }
 
-    await syncDiscordGuildData();
-    updateGatewayOnlineCount();
+    await syncDiscordData();
   });
 
   discordClient.on(Events.PresenceUpdate, (oldPresence, newPresence) => {
@@ -283,24 +364,24 @@ function startDiscordGateway() {
 
   discordClient.on(Events.GuildMemberAdd, (member) => {
     if (member.guild.id === DISCORD_GUILD_ID) {
-      syncDiscordGuildData();
+      syncDiscordData();
     }
   });
 
   discordClient.on(Events.GuildMemberRemove, (member) => {
     if (member.guild.id === DISCORD_GUILD_ID) {
-      syncDiscordGuildData();
+      syncDiscordData();
     }
   });
 
   discordClient.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
     if (newMember.guild.id === DISCORD_GUILD_ID) {
-      syncDiscordGuildData();
+      syncDiscordData();
     }
   });
 
   discordClient.on(Events.UserUpdate, () => {
-    syncDiscordGuildData();
+    syncDiscordData();
   });
 
   discordClient.on(Events.Error, (error) => {
@@ -316,7 +397,7 @@ function startDiscordGateway() {
   });
 
   discordClient.on(Events.ShardResume, () => {
-    syncDiscordGuildData();
+    syncDiscordData();
   });
 
   discordClient.login(DISCORD_BOT_TOKEN).catch((error) => {
@@ -327,8 +408,11 @@ function startDiscordGateway() {
     console.warn(`Discord Gateway login failed: ${error.message}`);
   });
 
-  // Regular periodic sync every 30 seconds
-  setInterval(syncDiscordGuildData, 30000);
+  // Background polling every 60 seconds ensures we update data even if Gateway is blocked by 429
+  setInterval(syncDiscordData, 60000);
+
+  // Initial sync attempt after 1 second (gives Gateway time to connect first, but falls back to REST if blocked)
+  setTimeout(syncDiscordData, 1000);
 }
 
 function cleanDiscordText(value, maxLength) {
@@ -604,133 +688,7 @@ async function discordApi(pathname) {
   return data;
 }
 
-async function getDiscordAdmins() {
-  const now = Date.now();
-  if (adminsCache.data && adminsCache.expiresAt > now && Array.isArray(adminsCache.data.admins)) {
-    return adminsCache.data;
-  }
-
-  // 1. Try discordClient (Gateway)
-  if (discordClient && discordClient.isReady()) {
-    try {
-      await syncDiscordGuildData();
-      if (adminsCache.data) return adminsCache.data;
-    } catch (err) {
-      console.warn('Gateway admin sync error:', err.message);
-    }
-  }
-
-  if (!DISCORD_BOT_TOKEN) {
-    return { ok: true, role: 'Admin', admins: [], note: 'Discord bot token is missing' };
-  }
-
-  // 2. REST Fallback
-  try {
-    const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
-    const adminRoles = roles.filter((role) => {
-      if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
-      const name = String(role.name || '').toLowerCase();
-      return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
-    });
-    const adminRoleIds = new Set(adminRoles.map((r) => r.id));
-
-    const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
-    const admins = members
-      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => adminRoleIds.has(rId)))
-      .map((member) => {
-        const user = member.user || {};
-        return {
-          id: user.id,
-          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
-          username: cleanDiscordText(user.username || 'admin', 80),
-          avatar: discordAvatarUrl(member),
-          url: `https://discord.com/users/${user.id}`
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    adminsCache = {
-      expiresAt: now + 60000,
-      data: {
-        ok: true,
-        role: 'Admin',
-        admins
-      }
-    };
-
-    return adminsCache.data;
-  } catch (error) {
-    if (adminsCache.data) {
-      return adminsCache.data;
-    }
-    return { ok: false, admins: [], error: error.message };
-  }
-}
-
-async function getDiscordSupporters() {
-  const now = Date.now();
-  if (supportersCache.data && supportersCache.expiresAt > now && Array.isArray(supportersCache.data.supporters)) {
-    return supportersCache.data;
-  }
-
-  // 1. Try discordClient (Gateway)
-  if (discordClient && discordClient.isReady()) {
-    try {
-      await syncDiscordGuildData();
-      if (supportersCache.data) return supportersCache.data;
-    } catch (err) {
-      console.warn('Gateway supporter sync error:', err.message);
-    }
-  }
-
-  if (!DISCORD_BOT_TOKEN) {
-    return { ok: true, role: 'Subscribers', supporters: [], note: 'Discord bot token is missing' };
-  }
-
-  // 2. REST Fallback
-  try {
-    const roles = await discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`);
-    const supporterRoles = roles.filter((role) => {
-      if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
-      const name = String(role.name || '').toLowerCase();
-      return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
-    });
-    const supporterRoleIds = new Set(supporterRoles.map((r) => r.id));
-
-    const members = await discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`);
-    const supporters = members
-      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => supporterRoleIds.has(rId)))
-      .map((member) => {
-        const user = member.user || {};
-        return {
-          id: user.id,
-          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
-          username: cleanDiscordText(user.username || 'supporter', 80),
-          avatar: discordAvatarUrl(member),
-          url: `https://discord.com/users/${user.id}`
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    supportersCache = {
-      expiresAt: now + 60000,
-      data: {
-        ok: true,
-        role: 'Subscribers',
-        supporters
-      }
-    };
-
-    return supportersCache.data;
-  } catch (error) {
-    if (supportersCache.data) {
-      return supportersCache.data;
-    }
-    return { ok: false, role: 'Subscribers', supporters: [], error: error.message };
-  }
-}
-
-async function handleAdminsRequest(req, res) {
+function handleAdminsRequest(req, res) {
   if (req.method === 'OPTIONS') {
     sendCorsOk(res);
     return;
@@ -741,19 +699,11 @@ async function handleAdminsRequest(req, res) {
     return;
   }
 
-  try {
-    const data = await getDiscordAdmins();
-    sendJson(res, 200, data);
-  } catch (error) {
-    sendJson(res, 503, {
-      ok: false,
-      admins: [],
-      error: error.message || 'Could not load admins'
-    });
-  }
+  const data = adminsCache.data || { ok: true, role: 'Admin', admins: [] };
+  sendJson(res, 200, data);
 }
 
-async function handleSupportersRequest(req, res) {
+function handleSupportersRequest(req, res) {
   if (req.method === 'OPTIONS') {
     sendCorsOk(res);
     return;
@@ -764,16 +714,8 @@ async function handleSupportersRequest(req, res) {
     return;
   }
 
-  try {
-    const data = await getDiscordSupporters();
-    sendJson(res, 200, data);
-  } catch (error) {
-    sendJson(res, 503, {
-      ok: false,
-      supporters: [],
-      error: error.message || 'Could not load supporters'
-    });
-  }
+  const data = supportersCache.data || { ok: true, role: 'Subscribers', supporters: [] };
+  sendJson(res, 200, data);
 }
 
 async function handleSiteControlRequest(req, res) {

@@ -173,12 +173,12 @@ async function syncDiscordData() {
       return;
     }
 
-    // 1. Try Discord Gateway (WebSocket) if connected
+    // 1. Try Discord Gateway (WebSocket) if connected - ZERO REST calls, use cache only
     if (discordClient && discordClient.isReady()) {
-      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+      const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID);
       if (guild) {
-        await guild.roles.fetch().catch(() => null);
-        const members = await guild.members.fetch().catch(() => guild.members.cache);
+        // Use cache only - populated by Gateway GUILD_MEMBERS_CHUNK events, no REST needed
+        const members = guild.members.cache;
 
         const adminMembers = members
           .filter((member) => !member.user?.bot && member.roles.cache.some((role) => {
@@ -199,7 +199,7 @@ async function syncDiscordData() {
           .sort((a, b) => a.name.localeCompare(b.name));
 
         adminsCache = {
-          expiresAt: Date.now() + 60000,
+          expiresAt: Date.now() + 30000,
           data: { ok: true, role: 'Admin', admins: adminMembers }
         };
 
@@ -222,7 +222,7 @@ async function syncDiscordData() {
           .sort((a, b) => a.name.localeCompare(b.name));
 
         supportersCache = {
-          expiresAt: Date.now() + 60000,
+          expiresAt: Date.now() + 30000,
           data: { ok: true, role: 'Subscribers', supporters: supporterMembers }
         };
 
@@ -343,7 +343,7 @@ function startDiscordGateway() {
 
   discordClient.once(Events.ClientReady, async () => {
     console.log(`Discord Gateway connected as ${discordClient.user.tag}`);
-    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID);
     if (!guild) {
       setDiscordGatewayStatus({
         source: 'discord-gateway-error',
@@ -352,7 +352,8 @@ function startDiscordGateway() {
       return;
     }
 
-    await syncDiscordData();
+    // Wait 4s for GUILD_MEMBERS_CHUNK events to finish populating the cache before reading it
+    setTimeout(syncDiscordData, 4000);
   });
 
   discordClient.on(Events.PresenceUpdate, (oldPresence, newPresence) => {

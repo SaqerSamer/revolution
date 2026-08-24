@@ -409,7 +409,7 @@ function startDiscordGateway() {
   });
 
   // Background polling every 60 seconds ensures we update data even if Gateway is blocked by 429
-  setInterval(syncDiscordData, 60000);
+  setInterval(syncDiscordData, 5000);
 
   // Initial sync attempt after 1 second (gives Gateway time to connect first, but falls back to REST if blocked)
   setTimeout(syncDiscordData, 1000);

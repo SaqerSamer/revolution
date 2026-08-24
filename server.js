@@ -26,11 +26,11 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = __dirname;
 const SITE_DATA_PATH = path.join(__dirname, 'data', 'site-control.json');
 const UPLOAD_DIR = path.join(__dirname, 'assets', 'uploads');
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || '1506948630903521290';
-const DISCORD_FEEDBACK_CHANNEL_ID = process.env.DISCORD_FEEDBACK_CHANNEL_ID || '1506948631360442411';
-const DISCORD_ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID || '1506948630920167458';
-const DISCORD_SUPPORTER_ROLE_ID = process.env.DISCORD_SUPPORTER_ROLE_ID || '1506948630907457714';
+const DISCORD_BOT_TOKEN = String(process.env.DISCORD_BOT_TOKEN || '').trim();
+const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || '1506948630903521290').trim();
+const DISCORD_FEEDBACK_CHANNEL_ID = String(process.env.DISCORD_FEEDBACK_CHANNEL_ID || '1506948631360442411').trim();
+const DISCORD_ADMIN_ROLE_ID = String(process.env.DISCORD_ADMIN_ROLE_ID || '1506948630920167458').trim();
+const DISCORD_SUPPORTER_ROLE_ID = String(process.env.DISCORD_SUPPORTER_ROLE_ID || '1506948630907457714').trim();
 const DISCORD_ADMIN_ROLE_NAMES = (process.env.DISCORD_ADMIN_ROLE_NAMES || 'admin,admins,administrator,staff,ادمن,owner,moderator,mod')
   .split(',')
   .map((roleName) => roleName.trim().toLowerCase())
@@ -272,10 +272,14 @@ function startDiscordGateway() {
     ]
   });
 
-  discordClient.once(Events.ClientReady, async () => {
+  discordClient.on(Events.ClientReady, async () => {
     console.log(`Discord Gateway connected as ${discordClient.user.tag}`);
-    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch(() => null);
+    const guild = discordClient.guilds.cache.get(DISCORD_GUILD_ID) || await discordClient.guilds.fetch(DISCORD_GUILD_ID).catch((e) => {
+      console.warn('Could not fetch guild:', e.message);
+      return null;
+    });
     if (!guild) {
+      console.warn('Bot is not in configured guild:', DISCORD_GUILD_ID);
       setDiscordGatewayStatus({
         source: 'discord-gateway-error',
         error: 'Bot is not in the configured Discord guild'
@@ -285,6 +289,7 @@ function startDiscordGateway() {
 
     try {
       await guild.members.fetch();
+      console.log(`Cached ${guild.members.cache.size} members from guild`);
     } catch (err) {
       console.warn('Initial member fetch notice:', err.message);
     }
@@ -292,6 +297,9 @@ function startDiscordGateway() {
     syncDiscordData();
     updateGatewayOnlineCount();
   });
+
+  discordClient.on(Events.Warn, (info) => console.warn('Discord warn:', info));
+  discordClient.on(Events.Error, (error) => console.warn('Discord error:', error.message));
 
   discordClient.on(Events.PresenceUpdate, (oldPresence, newPresence) => {
     const guildId = newPresence?.guild?.id || oldPresence?.guild?.id;

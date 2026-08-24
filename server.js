@@ -231,79 +231,10 @@ async function syncDiscordData() {
       }
     }
 
-    // 2. Fallback to Discord REST API (useful for Render shared IPs that block WSS)
-    const [guildData, roles, members] = await Promise.all([
-      discordApi(`/guilds/${DISCORD_GUILD_ID}?with_counts=true`),
-      discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`),
-      discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`)
-    ]);
-
-    const adminRoleIds = new Set(roles.filter((role) => {
-      if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
-      const name = String(role.name || '').toLowerCase();
-      return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
-    }).map(r => r.id));
-
-    const supporterRoleIds = new Set(roles.filter((role) => {
-      if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
-      const name = String(role.name || '').toLowerCase();
-      return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
-    }).map(r => r.id));
-
-    const admins = members
-      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => adminRoleIds.has(rId)))
-      .map((member) => {
-        const user = member.user || {};
-        return {
-          id: user.id,
-          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
-          username: cleanDiscordText(user.username || 'admin', 80),
-          avatar: discordAvatarUrl(member),
-          url: `https://discord.com/users/${user.id}`
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    adminsCache = {
-      expiresAt: Date.now() + 60000,
-      data: { ok: true, role: 'Admin', admins }
-    };
-
-    const supporters = members
-      .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => supporterRoleIds.has(rId)))
-      .map((member) => {
-        const user = member.user || {};
-        return {
-          id: user.id,
-          name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
-          username: cleanDiscordText(user.username || 'supporter', 80),
-          avatar: discordAvatarUrl(member),
-          url: `https://discord.com/users/${user.id}`
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    supportersCache = {
-      expiresAt: Date.now() + 60000,
-      data: { ok: true, role: 'Subscribers', supporters }
-    };
-
-    const onlineCount = typeof guildData.approximate_presence_count === 'number' 
-      ? guildData.approximate_presence_count 
-      : null;
-
-    setDiscordGatewayStatus({
-      online: onlineCount,
-      members: guildData.approximate_member_count ?? discordGatewayStatus.members,
-      source: 'discord-rest',
-      error: null
-    });
+    // Gateway not connected yet - do nothing, wait for ClientReady
 
   } catch (error) {
-    console.warn('Discord Sync Error:', error.message);
-    if (discordGatewayStatus.source !== 'discord-gateway') {
-      setDiscordGatewayStatus({ error: error.message });
-    }
+    console.warn('Discord Sync Error (cache read):', error.message);
   } finally {
     isSyncingDiscord = false;
   }
@@ -409,11 +340,8 @@ function startDiscordGateway() {
     console.warn(`Discord Gateway login failed: ${error.message}`);
   });
 
-  // Background polling every 60 seconds ensures we update data even if Gateway is blocked by 429
+  // Sync from cache every 5s (zero REST calls, reads Gateway cache only)
   setInterval(syncDiscordData, 5000);
-
-  // Initial sync attempt after 1 second (gives Gateway time to connect first, but falls back to REST if blocked)
-  setTimeout(syncDiscordData, 1000);
 }
 
 function cleanDiscordText(value, maxLength) {

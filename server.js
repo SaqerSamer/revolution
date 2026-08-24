@@ -231,10 +231,80 @@ async function syncDiscordData() {
       }
     }
 
-    // Gateway not connected yet - do nothing, wait for ClientReady
+    // 2. Fallback: if Gateway is not connected yet, fetch via Discord REST API (once every 60s)
+    try {
+      const [guildData, roles, members] = await Promise.all([
+        discordApi(`/guilds/${DISCORD_GUILD_ID}?with_counts=true`),
+        discordApi(`/guilds/${DISCORD_GUILD_ID}/roles`),
+        discordApi(`/guilds/${DISCORD_GUILD_ID}/members?limit=1000`)
+      ]);
+
+      const adminRoleIds = new Set(roles.filter((role) => {
+        if (role.id === DISCORD_ADMIN_ROLE_ID) return true;
+        const name = String(role.name || '').toLowerCase();
+        return DISCORD_ADMIN_ROLE_NAMES.some((n) => name.includes(n));
+      }).map(r => r.id));
+
+      const supporterRoleIds = new Set(roles.filter((role) => {
+        if (role.id === DISCORD_SUPPORTER_ROLE_ID) return true;
+        const name = String(role.name || '').toLowerCase();
+        return DISCORD_SUPPORTER_ROLE_NAMES.some((n) => name.includes(n));
+      }).map(r => r.id));
+
+      const admins = members
+        .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => adminRoleIds.has(rId)))
+        .map((member) => {
+          const user = member.user || {};
+          return {
+            id: user.id,
+            name: cleanDiscordText(member.nick || user.global_name || user.username || 'Admin', 80),
+            username: cleanDiscordText(user.username || 'admin', 80),
+            avatar: discordAvatarUrl(member),
+            url: `https://discord.com/users/${user.id}`
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      adminsCache = {
+        expiresAt: Date.now() + 60000,
+        data: { ok: true, role: 'Admin', admins }
+      };
+
+      const supporters = members
+        .filter((member) => !member.user?.bot && Array.isArray(member.roles) && member.roles.some((rId) => supporterRoleIds.has(rId)))
+        .map((member) => {
+          const user = member.user || {};
+          return {
+            id: user.id,
+            name: cleanDiscordText(member.nick || user.global_name || user.username || 'Supporter', 80),
+            username: cleanDiscordText(user.username || 'supporter', 80),
+            avatar: discordAvatarUrl(member),
+            url: `https://discord.com/users/${user.id}`
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      supportersCache = {
+        expiresAt: Date.now() + 60000,
+        data: { ok: true, role: 'Subscribers', supporters }
+      };
+
+      const onlineCount = typeof guildData.approximate_presence_count === 'number' 
+        ? guildData.approximate_presence_count 
+        : null;
+
+      setDiscordGatewayStatus({
+        online: onlineCount,
+        members: guildData.approximate_member_count ?? discordGatewayStatus.members,
+        source: 'discord-rest',
+        error: null
+      });
+    } catch (err) {
+      console.warn('REST fallback sync note:', err.message);
+    }
 
   } catch (error) {
-    console.warn('Discord Sync Error (cache read):', error.message);
+    console.warn('Discord Sync Error:', error.message);
   } finally {
     isSyncingDiscord = false;
   }
@@ -354,8 +424,9 @@ function startDiscordGateway() {
     console.warn(`Discord Gateway login failed: ${error.message}`);
   });
 
-  // Sync from cache every 5s (zero REST calls, reads Gateway cache only)
-  setInterval(syncDiscordData, 5000);
+  // Sync: reads from Gateway cache if connected, or safely polls REST every 60s
+  setInterval(syncDiscordData, 15000);
+  setTimeout(syncDiscordData, 1500);
 }
 
 function cleanDiscordText(value, maxLength) {

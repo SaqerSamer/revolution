@@ -1,6 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { createHash } = require('node:crypto');
+const { sendStatic, sendPage } = require('./lib/http-assets');
 
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env');
@@ -131,6 +133,7 @@ function broadcastDiscordStatus() {
 }
 
 function setDiscordGatewayStatus(nextStatus) {
+  if (Object.entries(nextStatus).every(([key, value]) => discordGatewayStatus[key] === value)) return;
   discordGatewayStatus = {
     ...discordGatewayStatus,
     ...nextStatus,
@@ -162,6 +165,7 @@ function updateGatewayOnlineCount() {
 }
 
 let isSyncingDiscord = false;
+let lastRestSyncAt = 0;
 
 async function syncDiscordData() {
   if (isSyncingDiscord) return;
@@ -235,6 +239,8 @@ async function syncDiscordData() {
     }
 
     // 2. Fallback: if Gateway is not connected yet, fetch via Discord REST API (once every 60s)
+    if (Date.now() - lastRestSyncAt < 60000) return;
+    lastRestSyncAt = Date.now();
     try {
       const [guildData, roles, members] = await Promise.all([
         discordApi(`/guilds/${DISCORD_GUILD_ID}?with_counts=true`),
@@ -463,7 +469,7 @@ function sanitizeUrlValue(value) {
     const url = new URL(nextValue);
     return ['http:', 'https:'].includes(url.protocol) ? url.toString() : '';
   } catch {
-    return nextValue.startsWith('assets/') ? nextValue : '';
+    return /^\/?assets\//.test(nextValue) && !nextValue.includes('..') ? nextValue : '';
   }
 }
 
@@ -505,26 +511,35 @@ function normalizeSiteData(data) {
     wipe: {
       startAt: sanitizeDateValue(wipe.startAt),
       endAt: sanitizeDateValue(wipe.endAt),
-      note: cleanField(wipe.note || defaultSiteData.wipe.note, 220)
+      note: cleanField(wipe.note ?? defaultSiteData.wipe.note, 220)
     },
     events
   };
 }
 
+let siteDataCache = null;
+
+function snapshotSiteData(data) {
+  const normalized = normalizeSiteData(data);
+  const revision = createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+  return { ...normalized, revision };
+}
+
 function readSiteData() {
+  if (siteDataCache) return siteDataCache;
   try {
     const sourcePath = fs.existsSync(SITE_DATA_PATH) ? SITE_DATA_PATH : BUNDLED_SITE_DATA_PATH;
     if (!fs.existsSync(sourcePath)) {
-      return defaultSiteData;
+      return (siteDataCache = snapshotSiteData(defaultSiteData));
     }
 
     const parsed = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-    return normalizeSiteData({
+    return (siteDataCache = snapshotSiteData({
       wipe: { ...defaultSiteData.wipe, ...(parsed.wipe || {}) },
       events: Array.isArray(parsed.events) ? parsed.events : (parsed.event ? [parsed.event] : defaultSiteData.events)
-    });
+    }));
   } catch {
-    return defaultSiteData;
+    return snapshotSiteData(defaultSiteData);
   }
 }
 
@@ -534,7 +549,17 @@ function writeSiteData(data) {
   const temporaryPath = `${SITE_DATA_PATH}.tmp`;
   fs.writeFileSync(temporaryPath, `${JSON.stringify(nextData, null, 2)}\n`, 'utf8');
   fs.renameSync(temporaryPath, SITE_DATA_PATH);
-  return nextData;
+  siteDataCache = snapshotSiteData(nextData);
+  const payload = `event: site-control\ndata: ${JSON.stringify({ ok: true, ...siteDataCache })}\n\n`;
+  for (const client of statusClients) {
+    if (client.destroyed || client.writableLength > 64 * 1024) {
+      client.destroy();
+      statusClients.delete(client);
+      continue;
+    }
+    client.write(payload);
+  }
+  return siteDataCache;
 }
 
 function getSuppliedAdminPassword(req, body = {}) {
@@ -712,6 +737,7 @@ function discordAvatarUrl(member) {
 
 async function discordApi(pathname) {
   const response = await fetch(`https://discord.com/api/v10${pathname}`, {
+    signal: AbortSignal.timeout(10000),
     headers: {
       Authorization: `Bot ${DISCORD_BOT_TOKEN}`
     }
@@ -835,51 +861,42 @@ function injectDiscordStatus(html) {
   );
 }
 
-function serveIndex(filePath, req, res) {
-  fs.readFile(filePath, 'utf8', (error, html) => {
-    if (error) {
-      send(res, 500, 'Internal Server Error');
-      return;
+const templateCache = new Map();
+const assetVersions = new Map();
+function versionAssets(html) {
+  return html.replace(/(\/?assets\/[\w/.-]+\.(?:js|webp|png|jpg|mp3)|styles\.css)(?=["\s])/g, (url) => {
+    if (!assetVersions.has(url)) {
+      const file = path.join(PUBLIC_DIR, url.replace(/^\//, ''));
+      if (!fs.existsSync(file)) return url;
+      assetVersions.set(url, createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 12));
     }
-
-    const body = injectDiscordStatus(html);
-    res.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Content-Length': Buffer.byteLength(body),
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff'
-    });
-
-    if (req.method === 'HEAD') {
-      res.end();
-      return;
-    }
-
-    res.end(body);
+    return `${url}?v=${assetVersions.get(url)}`;
   });
 }
 
-function serveHtmlFile(filePath, req, res) {
-  fs.readFile(filePath, (error, body) => {
-    if (error) {
-      send(res, 404, 'Not Found');
-      return;
-    }
+async function loadTemplate(filePath) {
+  if (!templateCache.has(filePath)) templateCache.set(filePath, versionAssets(await fs.promises.readFile(filePath, 'utf8')));
+  return templateCache.get(filePath);
+}
 
-    res.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Content-Length': body.length,
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff'
-    });
+async function serveIndex(filePath, req, res) {
+  try {
+    const template = await loadTemplate(filePath);
+    const snapshot = { ok: true, ...readSiteData() };
+    const json = JSON.stringify(snapshot).replace(/</g, '\\u003c');
+    const body = injectDiscordStatus(template).replace('<!--SITE_CONTROL_DATA-->', `<script id="site-control-data" type="application/json">${json}</script>`);
+    await sendPage(req, res, body, 'text/html; charset=utf-8', { 'X-Site-Revision': snapshot.revision, 'Cache-Control': 'no-store' });
+  } catch {
+    if (!res.headersSent) send(res, 500, 'Could not load website');
+  }
+}
 
-    if (req.method === 'HEAD') {
-      res.end();
-      return;
-    }
-
-    res.end(body);
-  });
+async function serveHtmlFile(filePath, req, res) {
+  try {
+    await sendPage(req, res, await loadTemplate(filePath), 'text/html; charset=utf-8');
+  } catch {
+    if (!res.headersSent) send(res, 404, 'Not Found');
+  }
 }
 
 function getSafePath(urlPath) {
@@ -990,9 +1007,10 @@ const server = http.createServer((req, res) => {
       'X-Content-Type-Options': 'nosniff'
     });
     res.write(`data: ${JSON.stringify(discordGatewayStatus)}\n\n`);
+    res.write(`event: site-control\ndata: ${JSON.stringify({ ok: true, ...readSiteData() })}\n\n`);
 
     statusClients.add(res);
-    req.on('close', () => {
+    res.on('close', () => {
       statusClients.delete(res);
     });
     return;
@@ -1021,60 +1039,10 @@ const server = http.createServer((req, res) => {
     }
 
     const contentType = mimeTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
-    const range = req.headers.range;
-
-    if (range) {
-      const match = /^bytes=(\d*)-(\d*)$/.exec(range);
-      if (!match) {
-        send(res, 416, 'Range Not Satisfiable');
-        return;
-      }
-
-      const start = match[1] ? Number(match[1]) : 0;
-      const end = match[2] ? Number(match[2]) : stat.size - 1;
-
-      if (start >= stat.size || end >= stat.size || start > end) {
-        res.writeHead(416, {
-          'Content-Range': `bytes */${stat.size}`,
-          'X-Content-Type-Options': 'nosniff'
-        });
-        res.end();
-        return;
-      }
-
-      const chunkSize = end - start + 1;
-      res.writeHead(206, {
-        'Content-Type': contentType,
-        'Content-Length': chunkSize,
-        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'no-cache',
-        'X-Content-Type-Options': 'nosniff'
-      });
-
-      if (req.method === 'HEAD') {
-        res.end();
-        return;
-      }
-
-      fs.createReadStream(filePath, { start, end }).pipe(res);
-      return;
-    }
-
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Content-Length': stat.size,
-      'Accept-Ranges': 'bytes',
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff'
+    sendStatic(req, res, filePath, stat, contentType).catch(() => {
+      if (!res.headersSent) send(res, 500, 'Could not load asset');
+      else res.destroy();
     });
-
-    if (req.method === 'HEAD') {
-      res.end();
-      return;
-    }
-
-    fs.createReadStream(filePath).pipe(res);
   });
 });
 

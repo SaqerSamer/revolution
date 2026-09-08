@@ -24,8 +24,11 @@ loadEnvFile();
 const PORT = Number(process.env.PORT || 20000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = __dirname;
-const SITE_DATA_PATH = path.join(__dirname, 'data', 'site-control.json');
-const UPLOAD_DIR = path.join(__dirname, 'assets', 'uploads');
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
+const DATA_DIR = path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.SITE_DATA_DIR || path.join(__dirname, 'data'));
+const SITE_DATA_PATH = path.join(DATA_DIR, 'site-control.json');
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const BUNDLED_SITE_DATA_PATH = path.join(__dirname, 'data', 'site-control.json');
 const DISCORD_BOT_TOKEN = String(process.env.DISCORD_BOT_TOKEN || '').trim();
 const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || '1506948630903521290').trim();
 const DISCORD_FEEDBACK_CHANNEL_ID = String(process.env.DISCORD_FEEDBACK_CHANNEL_ID || '1506948631360442411').trim();
@@ -510,11 +513,12 @@ function normalizeSiteData(data) {
 
 function readSiteData() {
   try {
-    if (!fs.existsSync(SITE_DATA_PATH)) {
+    const sourcePath = fs.existsSync(SITE_DATA_PATH) ? SITE_DATA_PATH : BUNDLED_SITE_DATA_PATH;
+    if (!fs.existsSync(sourcePath)) {
       return defaultSiteData;
     }
 
-    const parsed = JSON.parse(fs.readFileSync(SITE_DATA_PATH, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
     return normalizeSiteData({
       wipe: { ...defaultSiteData.wipe, ...(parsed.wipe || {}) },
       events: Array.isArray(parsed.events) ? parsed.events : (parsed.event ? [parsed.event] : defaultSiteData.events)
@@ -527,7 +531,9 @@ function readSiteData() {
 function writeSiteData(data) {
   const nextData = normalizeSiteData(data);
   fs.mkdirSync(path.dirname(SITE_DATA_PATH), { recursive: true });
-  fs.writeFileSync(SITE_DATA_PATH, `${JSON.stringify(nextData, null, 2)}\n`, 'utf8');
+  const temporaryPath = `${SITE_DATA_PATH}.tmp`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(nextData, null, 2)}\n`, 'utf8');
+  fs.renameSync(temporaryPath, SITE_DATA_PATH);
   return nextData;
 }
 
@@ -536,6 +542,24 @@ function getSuppliedAdminPassword(req, body = {}) {
   return authHeader.startsWith('Bearer ')
     ? authHeader.slice(7)
     : String(body.adminPassword || '');
+}
+
+function authorizeAdmin(req, res, body = {}) {
+  if (!ADMIN_PASSWORD) {
+    sendJson(res, 503, { ok: false, error: 'Admin access is not configured on the server.' });
+    return false;
+  }
+  if (getSuppliedAdminPassword(req, body) !== ADMIN_PASSWORD) {
+    sendJson(res, 401, { ok: false, error: 'Wrong admin password' });
+    return false;
+  }
+  return true;
+}
+
+function handleAdminSession(req, res) {
+  if (req.method === 'OPTIONS') return sendCorsOk(res);
+  if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed');
+  if (authorizeAdmin(req, res)) sendJson(res, 200, { ok: true });
 }
 
 function readJsonBody(req, maxBytes = 5 * 1024 * 1024) {
@@ -750,12 +774,7 @@ async function handleSiteControlRequest(req, res) {
 
   try {
     const body = await readJsonBody(req, 5 * 1024 * 1024);
-    const suppliedPassword = getSuppliedAdminPassword(req, body);
-
-    if (suppliedPassword !== ADMIN_PASSWORD) {
-      sendJson(res, 401, { ok: false, error: 'Wrong admin password' });
-      return;
-    }
+    if (!authorizeAdmin(req, res, body)) return;
 
     const data = writeSiteData(body.data || body);
     sendJson(res, 200, { ok: true, ...data });
@@ -775,10 +794,7 @@ async function handleEventImageUpload(req, res) {
     return;
   }
 
-  if (getSuppliedAdminPassword(req) !== ADMIN_PASSWORD) {
-    sendJson(res, 401, { ok: false, error: 'Wrong admin password' });
-    return;
-  }
+  if (!authorizeAdmin(req, res)) return;
 
   try {
     const extension = imageExtensionFromContentType(req.headers['content-type']);
@@ -800,7 +816,7 @@ async function handleEventImageUpload(req, res) {
 
     sendJson(res, 200, {
       ok: true,
-      imageUrl: `assets/uploads/${fileName}`
+      imageUrl: `/assets/uploads/${fileName}`
     });
   } catch (error) {
     sendJson(res, 400, { ok: false, error: error.message || 'Could not upload image' });
@@ -877,6 +893,14 @@ function getSafePath(urlPath) {
 
   const requestedPath = decodedPath === '/' ? 'index.html' : decodedPath.replace(/^[\\/]+/, '');
   const normalizedPath = path.normalize(requestedPath);
+  const segments = normalizedPath.split(/[\\/]/);
+  if (segments.some((segment) => segment.startsWith('.'))) return null;
+  const publicFiles = new Set(['index.html', 'styles.css', 'admin-rz-26ecu.html', 'favicon.ico', 'robots.txt']);
+  if (segments[0] !== 'assets' && !publicFiles.has(normalizedPath)) return null;
+  if (segments[0] === 'assets' && segments[1] === 'uploads' && segments.length === 3) {
+    const uploadedPath = path.join(UPLOAD_DIR, segments[2]);
+    if (fs.existsSync(uploadedPath)) return uploadedPath;
+  }
   const filePath = path.join(PUBLIC_DIR, normalizedPath);
   const resolvedPath = path.resolve(filePath);
   const relativePath = path.relative(PUBLIC_DIR, resolvedPath);
@@ -915,6 +939,11 @@ const server = http.createServer((req, res) => {
   }
 
   const route = req.url.split('?')[0];
+
+  if (route === '/api/admin-session') {
+    handleAdminSession(req, res);
+    return;
+  }
 
   if (route === '/api/feedback') {
     handleFeedbackRequest(req, res);
@@ -1050,7 +1079,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`RAIDZONE PURGATORY is running at http://${HOST}:${PORT}`);
+  console.log(`RAIDZONE PURGATORY is running at http://${HOST}:${server.address().port}`);
   console.log(`Open it on this PC: http://127.0.0.1:${PORT}`);
 });
 

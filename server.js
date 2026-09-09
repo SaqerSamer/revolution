@@ -941,7 +941,7 @@ function getSafePath(urlPath) {
   const publicFiles = new Set(['index.html', 'styles.css', 'admin-rz-26ecu.html', 'favicon.ico', 'robots.txt']);
   if (segments[0] !== 'assets' && !publicFiles.has(normalizedPath)) return null;
   if (segments[0] === 'assets' && segments[1] === 'event-images') {
-    return segments.length === 3 && /^[a-f0-9]{32}-(640|1280)\.webp$/.test(segments[2])
+    return segments.length === 3 && /^[a-f0-9]{32}-(640|1280|compressed)\.webp$/.test(segments[2])
       ? path.join(DATA_DIR, 'event-images', segments[2]) : null;
   }
   if (segments[0] === 'assets' && segments[1] === 'uploads' && segments.length === 3) {

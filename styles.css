@@ -1812,3 +1812,13 @@ h1 em{
   .card:hover,.about-card:hover,.download-card:hover,.event-slide:hover,.rule-category:hover,.support-card:hover,.feedback-card:hover{transform:none;box-shadow:none}
   .rules,.about,.download-game,.support-feedback,.cta{content-visibility:auto;contain-intrinsic-size:auto 600px}
 }
+
+/* Imported posts retain their full text and image proportions. */
+.discord-event{align-self:start;min-width:0}
+.discord-event .event-slide-body b{margin-bottom:5px}
+.discord-event time{display:block;color:var(--muted);font-size:.8rem;margin-bottom:16px}
+.discord-event .discord-event-text{white-space:pre-wrap;overflow-wrap:anywhere;text-align:start;unicode-bidi:plaintext;color:var(--txt)}
+.discord-event-images{display:grid;gap:8px;padding:0 16px 16px}
+.discord-event-images a{display:block;border-radius:10px;overflow:hidden}
+.discord-event-images img{display:block;width:100%;height:auto;max-height:600px;object-fit:contain;background:#141416}
+@media(max-width:600px){.event-slider{grid-template-columns:minmax(0,1fr)}}

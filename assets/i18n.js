@@ -9,6 +9,8 @@
 
   const dictionaries = {
     ar: {
+      'Discord Event': 'إيفنت الدسكورد',
+      'Event image': 'صورة الإيفنت',
       'REVOLUTION | Once Human Community': 'REVOLUTION | مجتمع Once Human',
       'REVOLUTION — a custom Once Human community server hub for raids, events, rules, squads, and Discord.': 'REVOLUTION — مركز مجتمع مخصص لسيرفر Once Human للرايدات والفعاليات والقوانين والفرق والديسكورد.',
       'Custom Once Human community server — raids, events, squads, and high-stakes survival.': 'سيرفر مجتمع Once Human مخصص — رايدات، فعاليات، فرق، وتحديات نجاة حماسية.',
@@ -193,6 +195,8 @@
       'm': 'دقيقة'
     },
     ru: {
+      'Discord Event': 'Событие из Discord',
+      'Event image': 'Изображение события',
       'REVOLUTION | Once Human Community': 'REVOLUTION | Сообщество Once Human',
       'REVOLUTION — a custom Once Human community server hub for raids, events, rules, squads, and Discord.': 'REVOLUTION — центр пользовательского сервера Once Human для рейдов, событий, правил, отрядов и Discord.',
       'Custom Once Human community server — raids, events, squads, and high-stakes survival.': 'Пользовательский сервер сообщества Once Human — рейды, события, отряды и выживание с высокими ставками.',

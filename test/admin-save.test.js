@@ -16,12 +16,17 @@ test('admin authentication, saving, uploads and persistence across deployments',
   fs.mkdirSync(path.join(app, 'lib'), { recursive: true });
   fs.copyFileSync(path.join(__dirname, '..', 'server.js'), path.join(app, 'server.js'));
   fs.copyFileSync(path.join(__dirname, '..', 'lib', 'http-assets.js'), path.join(app, 'lib', 'http-assets.js'));
+  fs.copyFileSync(path.join(__dirname, '..', 'lib', 'discord-events.js'), path.join(app, 'lib', 'discord-events.js'));
   fs.writeFileSync(path.join(app, 'index.html'), '<h1>Site</h1><!--SITE_CONTROL_DATA-->');
   const textAsset = '/* cached script */\n'.repeat(1000);
   fs.writeFileSync(path.join(app, 'assets', 'test.js'), textAsset);
   fs.writeFileSync(path.join(app, '.env'), '# No real credentials in this isolated fixture\n');
   fs.writeFileSync(path.join(app, 'assets', 'uploads', 'old.png'), 'bundled-image');
   fs.writeFileSync(path.join(app, 'data', 'site-control.json'), JSON.stringify({ wipe: { note: 'Bundled note' }, events: [] }));
+  fs.mkdirSync(volume, { recursive: true });
+  const discordPost = { id: 'discord-123', source: 'discord', description: 'Independent Discord event', images: [], publishedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString() };
+  fs.writeFileSync(path.join(volume, 'discord-events.json'), JSON.stringify({ channelId: '1507830430987194460', events: [discordPost] }));
+  const manualSnapshot = ({ ok, wipe, events, revision }) => ({ ok, wipe, events, revision });
   let child;
   let base;
   async function stop() {
@@ -88,7 +93,8 @@ test('admin authentication, saving, uploads and persistence across deployments',
   assert.equal(expected.events[0].imageUrl, imageUrl, 'Uploaded image URL must survive normalization');
   await readUntil(expected.revision);
   streamAbort.abort();
-  assert.deepEqual(await (await fetch(`${base}/api/site-control`)).json(), expected);
+  assert.deepEqual(manualSnapshot(await (await fetch(`${base}/api/site-control`)).json()), expected);
+  assert.deepEqual((await (await fetch(`${base}/api/discord-events`)).json()).discordEvents, [discordPost], 'Admin saves and deployments preserve the separate Discord feed');
   assert.deepEqual(Buffer.from(await (await fetch(new URL(imageUrl, base))).arrayBuffer()), imageBytes);
   assert.equal(await (await fetch(`${base}/assets/uploads/old.png`)).text(), 'bundled-image');
   const stages = [];
@@ -122,7 +128,8 @@ test('admin authentication, saving, uploads and persistence across deployments',
   // A new deployment can contain different seed data but must keep the saved volume data.
   fs.writeFileSync(path.join(app, 'data', 'site-control.json'), JSON.stringify({ wipe: { note: 'New deployment seed' }, events: [] }));
   await start('test-only-admin-password');
-  assert.deepEqual(await (await fetch(`${base}/api/site-control`)).json(), expected);
+  assert.deepEqual(manualSnapshot(await (await fetch(`${base}/api/site-control`)).json()), expected);
+  assert.deepEqual((await (await fetch(`${base}/api/discord-events`)).json()).discordEvents, [discordPost], 'Admin saves and deployments preserve the separate Discord feed');
   assert.deepEqual(Buffer.from(await (await fetch(new URL(imageUrl, base))).arrayBuffer()), imageBytes);
   await stop();
   await start('');

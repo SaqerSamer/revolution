@@ -75,9 +75,12 @@ window.raidzoneI18n?.init();
     const eventSlider = document.getElementById('eventSlider');
     let currentSiteData = null;
     let wipeCountdownTimer = null;
+    let eventExpiryTimer = null;
+    let serverClockOffset = 0;
     let supportersSignature = '';
     let latestSupporters = [];
     let latestAdmins = [];
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && currentSiteData) renderAllEvents(); });
     const bgMusic = document.getElementById('bgMusic');
 
     function escapeHtml(value) {
@@ -237,15 +240,20 @@ window.raidzoneI18n?.init();
     }
 
     function renderEvents(events) {
+      clearTimeout(eventExpiryTimer);
       if (!eventSlider) return;
 
-      const safeEvents = Array.isArray(events) ? events.filter((eventData) => (
+      const safeEvents = Array.isArray(events) ? events.filter(eventData => !eventData.expiresAt || Date.parse(eventData.expiresAt) > Date.now() + serverClockOffset).filter((eventData) => (
+        eventData.images?.length ||
         eventData.title ||
         eventData.description ||
         eventData.startsAtMoscow ||
         eventData.imageUrl ||
         eventData.location
       )) : [];
+
+      const expirations = safeEvents.map(event => Date.parse(event.expiresAt)).filter(Number.isFinite);
+      if (expirations.length) eventExpiryTimer = setTimeout(() => renderAllEvents(), Math.max(1, Math.min(...expirations) - Date.now() - serverClockOffset));
 
       if (!safeEvents.length) {
         eventSlider.innerHTML = `
@@ -261,6 +269,17 @@ window.raidzoneI18n?.init();
       }
 
       eventSlider.innerHTML = safeEvents.map((eventData, index) => {
+        if (eventData.source === 'discord') {
+          const images = (eventData.images || []).map(url => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}" alt="${escapeHtml(t('Event image'))}" loading="lazy" decoding="async" /></a>`).join('');
+          return `<article class="event-slide discord-event" data-event-id="${escapeHtml(eventData.id)}">
+            <div class="event-slide-body">
+              <b>${escapeHtml(t('Discord Event'))}</b>
+              <time datetime="${escapeHtml(eventData.publishedAt)}">${escapeHtml(formatDateTime(eventData.publishedAt))}</time>
+              ${eventData.description ? `<p class="discord-event-text" dir="auto">${escapeHtml(eventData.description)}</p>` : ''}
+            </div>
+            ${images ? `<div class="discord-event-images">${images}</div>` : ''}
+          </article>`;
+        }
         const image = eventData.imageUrl
           ? `<img src="${escapeHtml(eventData.imageUrl)}" alt="" loading="lazy" />`
           : `<div class="event-image-placeholder">${escapeHtml(t('REVOLUTION'))}</div>`;
@@ -284,12 +303,17 @@ window.raidzoneI18n?.init();
       }).join('');
     }
 
+    function renderAllEvents() {
+      renderEvents([...(currentSiteData?.events || []), ...(currentSiteData?.discordEvents || [])]);
+    }
+
     function renderSiteControl(data, force = false) {
-      if (!force && data?.revision && data.revision === currentSiteData?.revision) return;
+      if (data?.serverTime && Number.isFinite(Date.parse(data.serverTime))) serverClockOffset = Date.parse(data.serverTime) - Date.now();
+      if (!force && data?.revision && data.revision === currentSiteData?.revision && data.discordEventsRevision === currentSiteData?.discordEventsRevision) return;
       currentSiteData = data || {};
       document.documentElement.dataset.siteRevision = data?.revision || '';
       renderWipe(currentSiteData.wipe);
-      renderEvents(currentSiteData.events);
+      renderAllEvents();
 
       clearInterval(wipeCountdownTimer);
       wipeCountdownTimer = setInterval(() => { if (!document.hidden) renderWipe(currentSiteData.wipe); }, 30000);

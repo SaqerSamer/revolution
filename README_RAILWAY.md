@@ -38,3 +38,13 @@ Text assets are gzip-compressed and cached. HTML references content-versioned
 assets, so deployments invalidate updated files without disabling browser caches.
 Audio is loaded after an entry/play gesture and supports suffix/open byte ranges.
 Mobile/coarse-pointer devices skip the canvas and repeated reveal animations.
+
+
+## Discord event feed and button fonts
+The existing bot reads channel `1507830430987194460` (override `DISCORD_EVENTS_CHANNEL_ID`). It needs View Channel, Read Message History and Message Content enabled in the Discord Developer Portal. No webhook or Discord posting permission is used by this feed.
+
+Guild message notifications trigger a refresh; a 30-second REST poll reconciles new, edited, deleted and missed posts. History is paginated through the last 24 hours. Text and all supported images are imported, mentions are removed, and rich embed announcements are supported. The original message time fixes expiry at 24 hours; edits and deployments do not extend it. API errors retain cached unexpired posts and back off on rate limits. Signed Discord image URLs are refreshed during reconciliation.
+
+The feed cache lives at `discord-events.json` on the existing data volume, separately from admin events. Both server timers and browser timers remove expired posts, including when a mobile tab resumes. Manual events and their save-verification revision remain independent. `/api/discord-events` exposes read-only sync health and the current feed.
+
+Buttons use self-hosted Manrope 700 and Tajawal 700, with Latin, Cyrillic and Arabic WOFF2 subsets (41 KB combined; browsers only load needed subsets). Font licenses are in `assets/fonts`.

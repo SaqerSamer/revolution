@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { createHash } = require('node:crypto');
 const { sendStatic, sendPage } = require('./lib/http-assets');
+const { DiscordEventFeed } = require('./lib/discord-events');
 
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env');
@@ -33,6 +34,7 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const BUNDLED_SITE_DATA_PATH = path.join(__dirname, 'data', 'site-control.json');
 const DISCORD_BOT_TOKEN = String(process.env.DISCORD_BOT_TOKEN || '').trim();
 const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || '1506948630903521290').trim();
+const DISCORD_EVENTS_CHANNEL_ID = String(process.env.DISCORD_EVENTS_CHANNEL_ID || '1507830430987194460').trim();
 const DISCORD_FEEDBACK_CHANNEL_ID = String(process.env.DISCORD_FEEDBACK_CHANNEL_ID || '1506948631360442411').trim();
 const DISCORD_ADMIN_ROLE_ID = String(process.env.DISCORD_ADMIN_ROLE_ID || '1506948630920167458').trim();
 const DISCORD_SUPPORTER_ROLE_ID = String(process.env.DISCORD_SUPPORTER_ROLE_ID || '1506948630907457714').trim();
@@ -346,6 +348,7 @@ function startDiscordGateway() {
   discordClient = new Client({
     intents: [
       GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
       GatewayIntentBits.GuildPresences,
       GatewayIntentBits.GuildMembers
     ]
@@ -375,6 +378,15 @@ function startDiscordGateway() {
 
     syncDiscordData();
     updateGatewayOnlineCount();
+  });
+
+  for (const event of [Events.MessageCreate, Events.MessageUpdate, Events.MessageDelete]) {
+    discordClient.on(event, (...messages) => {
+      if (messages.some(message => message?.channelId === DISCORD_EVENTS_CHANNEL_ID)) discordEventFeed.requestSync();
+    });
+  }
+  discordClient.on(Events.MessageBulkDelete, (messages, channel) => {
+    if (channel?.id === DISCORD_EVENTS_CHANNEL_ID) discordEventFeed.requestSync();
   });
 
   discordClient.on(Events.Warn, (info) => console.warn('Discord warn:', info));
@@ -550,7 +562,17 @@ function writeSiteData(data) {
   fs.writeFileSync(temporaryPath, `${JSON.stringify(nextData, null, 2)}\n`, 'utf8');
   fs.renameSync(temporaryPath, SITE_DATA_PATH);
   siteDataCache = snapshotSiteData(nextData);
-  const payload = `event: site-control\ndata: ${JSON.stringify({ ok: true, ...siteDataCache })}\n\n`;
+  broadcastSiteData();
+  return siteDataCache;
+}
+
+const discordEventFeed = new DiscordEventFeed({
+  channelId: DISCORD_EVENTS_CHANNEL_ID, filePath: path.join(DATA_DIR, 'discord-events.json'),
+  api: discordApi, onChange: broadcastSiteData
+});
+function publicSiteData() { return { ok: true, ...readSiteData(), ...discordEventFeed.snapshot() }; }
+function broadcastSiteData() {
+  const payload = `event: site-control\ndata: ${JSON.stringify(publicSiteData())}\n\n`;
   for (const client of statusClients) {
     if (client.destroyed || client.writableLength > 64 * 1024) {
       client.destroy();
@@ -559,7 +581,6 @@ function writeSiteData(data) {
     }
     client.write(payload);
   }
-  return siteDataCache;
 }
 
 function getSuppliedAdminPassword(req, body = {}) {
@@ -746,7 +767,10 @@ async function discordApi(pathname) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || `Discord API error ${response.status}`);
+    const error = new Error(data.message || `Discord API error ${response.status}`);
+    error.status = response.status;
+    error.retryAfterMs = Number(data.retry_after || 0) * 1000;
+    throw error;
   }
 
   return data;
@@ -789,7 +813,7 @@ async function handleSiteControlRequest(req, res) {
   }
 
   if (req.method === 'GET' || req.method === 'HEAD') {
-    sendJson(res, 200, { ok: true, ...readSiteData() });
+    sendJson(res, 200, publicSiteData());
     return;
   }
 
@@ -864,7 +888,7 @@ function injectDiscordStatus(html) {
 const templateCache = new Map();
 const assetVersions = new Map();
 function versionAssets(html) {
-  return html.replace(/(\/?assets\/[\w/.-]+\.(?:js|webp|png|jpg|mp3)|styles\.css)(?=["\s])/g, (url) => {
+  return html.replace(/(\/?assets\/[\w/.-]+\.(?:js|css|webp|png|jpg|mp3)|styles\.css)(?=["\s])/g, (url) => {
     if (!assetVersions.has(url)) {
       const file = path.join(PUBLIC_DIR, url.replace(/^\//, ''));
       if (!fs.existsSync(file)) return url;
@@ -882,7 +906,7 @@ async function loadTemplate(filePath) {
 async function serveIndex(filePath, req, res) {
   try {
     const template = await loadTemplate(filePath);
-    const snapshot = { ok: true, ...readSiteData() };
+    const snapshot = publicSiteData();
     const json = JSON.stringify(snapshot).replace(/</g, '\\u003c');
     const body = injectDiscordStatus(template).replace('<!--SITE_CONTROL_DATA-->', `<script id="site-control-data" type="application/json">${json}</script>`);
     await sendPage(req, res, body, 'text/html; charset=utf-8', { 'X-Site-Revision': snapshot.revision, 'Cache-Control': 'no-store' });
@@ -977,6 +1001,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (route === '/api/discord-events') {
+    if (!['GET', 'HEAD'].includes(req.method)) return send(res, 405, 'Method Not Allowed');
+    sendJson(res, 200, { ok: true, ...discordEventFeed.snapshot(), sync: discordEventFeed.status });
+    return;
+  }
+
   if (route === '/api/site-control') {
     handleSiteControlRequest(req, res);
     return;
@@ -1007,7 +1037,7 @@ const server = http.createServer((req, res) => {
       'X-Content-Type-Options': 'nosniff'
     });
     res.write(`data: ${JSON.stringify(discordGatewayStatus)}\n\n`);
-    res.write(`event: site-control\ndata: ${JSON.stringify({ ok: true, ...readSiteData() })}\n\n`);
+    res.write(`event: site-control\ndata: ${JSON.stringify(publicSiteData())}\n\n`);
 
     statusClients.add(res);
     res.on('close', () => {
@@ -1052,3 +1082,4 @@ server.listen(PORT, HOST, () => {
 });
 
 startDiscordGateway();
+if (DISCORD_BOT_TOKEN) discordEventFeed.start();

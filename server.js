@@ -4,6 +4,7 @@ const path = require('path');
 const { createHash } = require('node:crypto');
 const { sendStatic, sendPage } = require('./lib/http-assets');
 const { DiscordEventFeed } = require('./lib/discord-events');
+const { EventImageCache } = require('./lib/event-images');
 
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env');
@@ -566,9 +567,10 @@ function writeSiteData(data) {
   return siteDataCache;
 }
 
+const eventImageCache = new EventImageCache(path.join(DATA_DIR, 'event-images'));
 const discordEventFeed = new DiscordEventFeed({
   channelId: DISCORD_EVENTS_CHANNEL_ID, filePath: path.join(DATA_DIR, 'discord-events.json'),
-  api: discordApi, onChange: broadcastSiteData
+  api: discordApi, onChange: broadcastSiteData, prepareEvents: events => eventImageCache.prepare(events)
 });
 function publicSiteData() { return { ok: true, ...readSiteData(), ...discordEventFeed.snapshot() }; }
 function broadcastSiteData() {
@@ -938,6 +940,10 @@ function getSafePath(urlPath) {
   if (segments.some((segment) => segment.startsWith('.'))) return null;
   const publicFiles = new Set(['index.html', 'styles.css', 'admin-rz-26ecu.html', 'favicon.ico', 'robots.txt']);
   if (segments[0] !== 'assets' && !publicFiles.has(normalizedPath)) return null;
+  if (segments[0] === 'assets' && segments[1] === 'event-images') {
+    return segments.length === 3 && /^[a-f0-9]{32}-(640|1280)\.webp$/.test(segments[2])
+      ? path.join(DATA_DIR, 'event-images', segments[2]) : null;
+  }
   if (segments[0] === 'assets' && segments[1] === 'uploads' && segments.length === 3) {
     const uploadedPath = path.join(UPLOAD_DIR, segments[2]);
     if (fs.existsSync(uploadedPath)) return uploadedPath;

@@ -17,6 +17,7 @@ test('admin authentication, saving, uploads and persistence across deployments',
   fs.copyFileSync(path.join(__dirname, '..', 'server.js'), path.join(app, 'server.js'));
   fs.copyFileSync(path.join(__dirname, '..', 'lib', 'http-assets.js'), path.join(app, 'lib', 'http-assets.js'));
   fs.copyFileSync(path.join(__dirname, '..', 'lib', 'discord-events.js'), path.join(app, 'lib', 'discord-events.js'));
+  fs.copyFileSync(path.join(__dirname, '..', 'lib', 'event-images.js'), path.join(app, 'lib', 'event-images.js'));
   fs.writeFileSync(path.join(app, 'index.html'), '<h1>Site</h1><!--SITE_CONTROL_DATA-->');
   const textAsset = '/* cached script */\n'.repeat(1000);
   fs.writeFileSync(path.join(app, 'assets', 'test.js'), textAsset);

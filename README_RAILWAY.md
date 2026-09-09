@@ -48,3 +48,5 @@ Guild message notifications trigger a refresh; a 30-second REST poll reconciles 
 The feed cache lives at `discord-events.json` on the existing data volume, separately from admin events. Both server timers and browser timers remove expired posts, including when a mobile tab resumes. Manual events and their save-verification revision remain independent. `/api/discord-events` exposes read-only sync health and the current feed.
 
 Buttons use self-hosted Manrope 700 and Tajawal 700, with Latin, Cyrillic and Arabic WOFF2 subsets (41 KB combined; browsers only load needed subsets). Font licenses are in `assets/fonts`.
+
+Discord attachments are optimized once on the server into 640px and 1280px WebP variants on the data volume. The website serves the cached responsive images; clicking opens the original. Signed URL renewals reuse the same attachment cache. Two workers, a download timeout/size limit, decoder pixel limit and a 25-hour cleanup grace period bound processing and storage. Failed conversions retain the original image and are retried at the next synchronization.

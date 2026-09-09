@@ -270,10 +270,15 @@ window.raidzoneI18n?.init();
 
       eventSlider.innerHTML = safeEvents.map((eventData, index) => {
         if (eventData.source === 'discord') {
-          const images = (eventData.images || []).map(url => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}" alt="${escapeHtml(t('Event image'))}" loading="lazy" decoding="async" /></a>`).join('');
+          const images = (eventData.images || []).map((url, imageIndex) => {
+            const variants = eventData.imageVariants?.[imageIndex] || [];
+            const largest = variants[variants.length - 1];
+            const unique = variants.filter((variant, i) => !variants.slice(0, i).some(previous => previous.width === variant.width));
+            const responsive = largest ? ` srcset="${unique.map(variant => `${escapeHtml(variant.url)} ${variant.width}w`).join(', ')}" sizes="(max-width: 720px) calc(100vw - 64px), (max-width: 1100px) 50vw, 640px" width="${largest.width}" height="${largest.height}"` : '';
+            return `<a href="${escapeHtml(eventData.originalImages?.[imageIndex] || url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}"${responsive} alt="${escapeHtml(t('Event image'))}" loading="lazy" decoding="async" /></a>`;
+          }).join('');
           return `<article class="event-slide discord-event" data-event-id="${escapeHtml(eventData.id)}">
             <div class="event-slide-body">
-              <b>${escapeHtml(t('Discord Event'))}</b>
               <time datetime="${escapeHtml(eventData.publishedAt)}">${escapeHtml(formatDateTime(eventData.publishedAt))}</time>
               ${eventData.description ? `<p class="discord-event-text" dir="auto">${escapeHtml(eventData.description)}</p>` : ''}
             </div>
